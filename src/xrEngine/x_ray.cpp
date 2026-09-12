@@ -1048,8 +1048,8 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
 	}
 
 	// Title window
-	logoWindow = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_STARTUP), 0, logDlgProc);
-
+    logoWindow = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_STARTUP), 0, logDlgProc);
+   
 	HWND logoPicture = GetDlgItem(logoWindow, IDC_STATIC_LOGO);
 	RECT logoRect;
 	GetWindowRect(logoPicture, &logoRect);
@@ -1062,6 +1062,13 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
 	GetMonitorPosition(monX, monY);
 	int x = monX + (screenW - splashW) / 2;
 	int y = monY + (screenH - splashH) / 2;
+
+    // verdatim: set the size of the splash window to be zero when the flag "-nosplashwindow" is given
+    if (strstr(xr_strdup(GetCommandLine()), "-nosplashwindow")) {
+        splashW = int(0);
+        splashH = int(0);
+    }
+
 
 	SetWindowPos(
 		logoWindow,
@@ -1076,7 +1083,7 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
 		splashH,
 		SWP_SHOWWINDOW
 	);
-
+	
 	UpdateWindow(logoWindow);
 
 	// AVI
