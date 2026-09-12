@@ -69,14 +69,14 @@ bool CLevel::synchronize_map_data()
 		return false;
 	}
 
-	if (map_data.IsInvalidMapOrVersion())
+	if (map_data.IsInvalidMapOrVersion() && !strstr(Core.Params, "-netcoop"))
 	{
 		Msg("! Incorect map or version, reconnecting...");
 		MakeReconnect();
 		g_loading_events.erase(++g_loading_events.begin(), g_loading_events.end());
 		return true;
 	}
-	if (map_data.IsInvalidClientChecksum())
+	if (map_data.IsInvalidClientChecksum() && !strstr(Core.Params, "-netcoop"))
 	{
 		connected_to_server = FALSE;
 		return false; //!!!

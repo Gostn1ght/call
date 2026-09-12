@@ -199,7 +199,8 @@ void CInventoryOwner::load(IReader& input_packet)
 	CharacterInfo().load(input_packet);
 	load_data(m_game_name_str, input_packet);
 	load_data(m_money, input_packet);
-	if (this->object_id() != Actor()->object_id())
+	// NetAnomaly actor null-guard: Actor() is NULL while a remote actor spawns on a netcoop client
+	if (!Actor() || this->object_id() != Actor()->object_id())
 		m_game_name = TranslateName(m_game_name_str.c_str());
 }
 
@@ -448,7 +449,7 @@ void CInventoryOwner::SetCommunity(CHARACTER_COMMUNITY_INDEX new_community)
 	//	EA->id_Team = CharacterInfo().Community().team();
 	trader->m_community_index = new_community;
 
-	if (EA->ID() == Actor()->ID())
+	if (Actor() && EA->ID() == Actor()->ID())
 		Actor()->RPC_UpdateFaction();
 }
 
@@ -464,7 +465,7 @@ void CInventoryOwner::SetRank(CHARACTER_RANK_VALUE rank)
 	CharacterInfo().m_CurrentRank.set(rank);
 	trader->m_rank = rank;
 
-	if (EA->ID() == Actor()->ID())
+	if (Actor() && EA->ID() == Actor()->ID())
 		Actor()->RPC_UpdateRank();
 }
 
@@ -486,7 +487,7 @@ void CInventoryOwner::SetReputation(CHARACTER_REPUTATION_VALUE reputation)
 	CharacterInfo().m_CurrentReputation.set(reputation);
 	trader->m_reputation = reputation;
 
-	if (EA->ID() == Actor()->ID())
+	if (Actor() && EA->ID() == Actor()->ID())
 		Actor()->RPC_UpdateReputation();
 }
 

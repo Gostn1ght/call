@@ -11,6 +11,7 @@
 #include "game_sv_mp.h"
 #include "game_cl_base_weapon_usage_statistic.h"
 #include "ai_space.h"
+#include "script_engine.h"
 #include "../xrEngine/IGame_Persistent.h"
 #include "string_table.h"
 #include "object_broker.h"
@@ -259,6 +260,21 @@ void xrServer::Update()
 	if (0 == (Device.dwFrame % 100)) //once per 100 frames
 	{
 		UpdateBannedList();
+
+		// NetAnomaly: publish the real number of connected clients for the
+		// external server console (appdata/netanomaly_console_net.txt)
+		{
+			string_path na_fn;
+			FS.update_path(na_fn, "$app_data_root$", "netanomaly_console_net.txt");
+			IWriter* na_w = FS.w_open(na_fn);
+			if (na_w)
+			{
+				string256 na_line;
+				xr_sprintf(na_line, sizeof(na_line), "clients=%d", (int)GetClientsCount());
+				na_w->w_string(na_line);
+				FS.w_close(na_w);
+			}
+		}
 	}
 }
 
@@ -628,6 +644,47 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		{
 			xrClientData* l_pC = ID_to_client(sender);
 			OnChatMessage(&P, l_pC);
+		}
+		break;
+	case M_NETANOMALY_CMD:
+		{
+			//netanomaly: text command channel client -> server, handled in lua
+			string4096 na_text;
+			na_text[0] = 0;
+			P.r_stringZ(na_text);
+			xrClientData* na_cl = ID_to_client(sender);
+			LPCSTR na_name = (na_cl && na_cl->name.size()) ? na_cl->name.c_str() : "unknown";
+			int na_eid = (na_cl && na_cl->owner) ? int(na_cl->owner->ID) : int(65535);
+			string64 na_cid;
+			xr_sprintf(na_cid, "%08x", sender.value());
+			Msg("[NetAnomaly] cmd from [%s] 0x%s eid=%d : %s", na_name, na_cid, na_eid, na_text);
+			string4096 na_reply;
+			na_reply[0] = 0;
+			::luabind::functor<LPCSTR> na_f;
+			if (ai().script_engine().functor<LPCSTR>("netanomaly_server.on_client_command", na_f))
+			{
+				try
+				{
+					LPCSTR na_res = na_f((LPCSTR)na_cid, na_name, na_eid, (LPCSTR)na_text);
+					if (na_res) xr_strcpy(na_reply, na_res);
+				}
+				catch (...)
+				{
+					xr_strcpy(na_reply, "! server script error");
+				}
+			}
+			else
+			{
+				xr_strcpy(na_reply, "! netanomaly_server.script is not loaded on the server");
+			}
+			if (xr_strlen(na_reply))
+			{
+				Msg("[NetAnomaly] cmd reply -> %s", na_reply);
+				NET_Packet na_p;
+				na_p.w_begin(M_NETANOMALY_MSG);
+				na_p.w_stringZ(na_reply);
+				SendTo(sender, na_p, net_flags(TRUE, TRUE));
+			}
 		}
 		break;
 	case M_SV_MAP_NAME:

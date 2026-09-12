@@ -85,7 +85,7 @@ bool CLevel::net_start_client3()
 		LPCSTR level_ver = NULL;
 		LPCSTR download_url = NULL;
 
-		if (psNET_direct_connect) //single
+		if (psNET_direct_connect || (Server && IsGameTypeSingle())) //single, incl. the -netcoop host
 		{
 			shared_str const& server_options = Server->GetConnectOptions();
 			level_name = name().c_str(); //Server->level_name		(server_options).c_str();

@@ -845,7 +845,7 @@ void game_sv_GameState::OnEvent(NET_Packet& tNetPacket, u16 type, u32 time, Clie
 bool game_sv_GameState::CheckNewPlayer(xrClientData* CL)
 {
 	xrGameSpyServer* gs_server = smart_cast<xrGameSpyServer*>(m_server);
-	R_ASSERT(gs_server);
+	if (!gs_server) return true; //netcoop: single gametype over real network
 
 	char const* error_msg = NULL;
 	ClientID tmp_client_id(CL->ID);

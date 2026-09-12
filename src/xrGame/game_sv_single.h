@@ -4,6 +4,7 @@
 
 class xrServer;
 class CALifeSimulator;
+class CSE_ALifeCreatureActor;
 
 class game_sv_Single : public game_sv_GameState
 {
@@ -52,6 +53,11 @@ public:
 	virtual shared_str level_name(const shared_str& server_options) const;
 	virtual void on_death(CSE_Abstract* e_dest, CSE_Abstract* e_src);
 	void restart_simulator(LPCSTR saved_game_name);
+
+	// NetAnomaly co-op actor: additional clients get their own actor
+	virtual void OnPlayerConnectFinished(ClientID id_who);
+	void netcoop_spawn_actor(ClientID id_who);
+	CSE_ALifeCreatureActor* netcoop_host_actor();
 
 	IC xrServer& server() const
 	{

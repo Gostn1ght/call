@@ -353,6 +353,15 @@ void CLevel::ClientReceive()
 				OnConnectResult(P);
 			}
 			break;
+		case M_NETANOMALY_MSG:
+			{
+				//netanomaly: server answer for the 'srv' console command
+				string4096 na_text;
+				na_text[0] = 0;
+				P->r_stringZ(na_text);
+				Msg("%s", na_text);
+			}
+			break;
 		case M_CHAT_MESSAGE:
 			{
 				/*if (!game_configured)

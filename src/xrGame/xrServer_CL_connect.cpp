@@ -37,8 +37,7 @@ void xrServer::Perform_connect_spawn(CSE_Abstract* E, xrClientData* CL, NET_Pack
 		if (E->s_flags.is(M_SPAWN_OBJECT_ASPLAYER))
 		{
 			CL->owner = E;
-			VERIFY(CL->ps);
-			E->set_name_replace(CL->ps->getName());
+			if (CL->ps) E->set_name_replace(CL->ps->getName()); //netcoop: player state may not exist yet
 		}
 
 		// Associate
@@ -47,8 +46,7 @@ void xrServer::Perform_connect_spawn(CSE_Abstract* E, xrClientData* CL, NET_Pack
 		E->UPDATE_Write(P);
 
 		CSE_ALifeObject* object = smart_cast<CSE_ALifeObject*>(E);
-		VERIFY(object);
-		if (!object->keep_saved_data_anyway())
+		if (object && !object->keep_saved_data_anyway()) //netcoop: guard non-alife entities
 			object->client_data.clear();
 	}
 	else
@@ -100,6 +98,11 @@ void xrServer::OnCL_Connected(IClient* _CL)
 {
 	xrClientData* CL = (xrClientData*)_CL;
 	CL->net_Accepted = TRUE;
+	if (strstr(Core.Params, "-netcoop"))
+	{
+		Msg("[NetAnomaly] OnCL_Connected 0x%08x pid %u ps=%s", CL->ID.value(), CL->process_id, CL->ps ? "yes" : "no");
+		FlushLog();
+	}
 	/*if (Level().IsDemoPlay())
 	{
 		Level().StartPlayDemo();
@@ -137,6 +140,12 @@ void xrServer::SendConnectResult(IClient* CL, u8 res, u8 res1, char* ResultStr)
 	P.w_stringZ(Level().m_caServerOptions);
 
 	SendTo(CL->ID, P);
+
+	if (strstr(Core.Params, "-netcoop"))
+	{
+		Msg("[NetAnomaly] connect result -> 0x%08x res=%d res1=%d [%s]", CL->ID.value(), int(res), int(res1), ResultStr);
+		FlushLog();
+	}
 
 	if (!res) //need disconnect 
 	{
@@ -200,6 +209,16 @@ bool xrServer::NeedToCheckClient_BuildVersion(IClient* CL)
 
 
 	if (g_SV_Disable_Auth_Check) return false;
+	//netcoop: the single gametype server never calls FS.auth_generate, so a
+	//remote client can never satisfy the digest challenge and just waits in
+	//Connect2Server until the 60s timeout, which it reports to the user as
+	//"different versions". Skip the challenge for out-of-process clients.
+	if (strstr(Core.Params, "-netcoop") && CL->process_id != GetCurrentProcessId())
+	{
+		Msg("[NetAnomaly] auth challenge skipped for client 0x%08x (pid %u)", CL->ID.value(), CL->process_id);
+		FlushLog();
+		return false;
+	}
 	CL->flags.bVerified = FALSE;
 	NET_Packet P;
 	P.w_begin(M_AUTH_CHALLENGE);
@@ -220,7 +239,7 @@ void xrServer::OnBuildVersionRespond(IClient* CL, NET_Packet& P)
 	_our = MP_DEBUG_AUTH;
 #endif // USE_DEBUG_AUTH
 
-	if (_our != _him)
+	if (_our != _him && !strstr(Core.Params, "-netcoop")) //netcoop: never reject on data checksum
 	{
 		SendConnectResult(CL, 0, ecr_data_verification_failed, "Data verification failed. Cheater?");
 	}

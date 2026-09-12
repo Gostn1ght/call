@@ -85,6 +85,17 @@ xrServer::EConnect xrServer::Connect(shared_str& session_name, GameDescriptionDa
 
 	game->Create(session_name);
 
+	//netcoop: for the single gametype the real level name is only known after
+	//the alife simulator has been created, so refresh the description that
+	//clients receive. Otherwise they try to load the session name (all) and
+	//bail out in CLevel::net_start_client3 with: Failed to start client.
+	if (game->Type() == eGameIDSingle)
+	{
+		shared_str const netcoop_level_name = game->level_name(session_name);
+		if (netcoop_level_name.size())
+			xr_strcpy(game_descr.map_name, netcoop_level_name.c_str());
+	}
+
 	return IPureServer::Connect(*session_name, game_descr);
 }
 
@@ -106,6 +117,12 @@ IClient* xrServer::new_client(SClientConnectData* cl_data)
 
 	game->AddDelayedEvent(P, GAME_EVENT_CREATE_CLIENT, 0, CL->ID);
 
+	if (strstr(Core.Params, "-netcoop"))
+	{
+		Msg("[NetAnomaly] new_client 0x%08x pid %u name [%s]", CL->ID.value(), CL->process_id, cl_data->name);
+		FlushLog();
+	}
+
 	return CL;
 }
 
@@ -114,6 +131,12 @@ void xrServer::AttachNewClient(IClient* CL)
 	MSYS_CONFIG msgConfig;
 	msgConfig.sign1 = 0x12071980;
 	msgConfig.sign2 = 0x26111975;
+
+	if (strstr(Core.Params, "-netcoop"))
+	{
+		Msg("[NetAnomaly] AttachNewClient 0x%08x pid %u local=%d", CL->ID.value(), CL->process_id, int(CL->flags.bLocal));
+		FlushLog();
+	}
 
 	if (psNET_direct_connect) //single_game
 	{

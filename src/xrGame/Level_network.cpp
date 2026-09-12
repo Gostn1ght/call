@@ -341,7 +341,10 @@ struct _NetworkProcessor : public pureFrame
 {
 	virtual void _BCL OnFrame()
 	{
-		if (g_pGameLevel && !Device.Paused()) g_pGameLevel->net_Update();
+		// netcoop: server must keep running even when the host window is
+		// paused/unfocused, otherwise remote clients can never connect.
+		if (g_pGameLevel && (!Device.Paused() || strstr(Core.Params, "-netcoop")))
+			g_pGameLevel->net_Update();
 	}
 } NET_processor;
 

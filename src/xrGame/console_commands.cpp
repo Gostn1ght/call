@@ -2465,8 +2465,69 @@ public:
     }
 };
 
+//netanomaly: send a text command to the server (accounts, admin, spawner)
+class CCC_NetAnomalySrv : public IConsole_Command
+{
+public:
+	CCC_NetAnomalySrv(LPCSTR N) : IConsole_Command(N) { bEmptyArgsHandled = TRUE; };
+	virtual void Execute(LPCSTR args)
+	{
+		if (!args || !xr_strlen(args))
+		{
+			Msg("~ usage: srv <command>, for example: srv help");
+			return;
+		}
+		if (!g_pGameLevel)
+		{
+			Msg("! srv: not in game");
+			return;
+		}
+		NET_Packet P;
+		P.w_begin(M_NETANOMALY_CMD);
+		P.w_stringZ(args);
+		Level().Send(P, net_flags(TRUE, TRUE));
+	}
+};
+
+//netanomaly: run the same command locally on the server console (always admin)
+class CCC_NetAnomalySvCmd : public IConsole_Command
+{
+public:
+	CCC_NetAnomalySvCmd(LPCSTR N) : IConsole_Command(N) { bEmptyArgsHandled = TRUE; };
+	virtual void Execute(LPCSTR args)
+	{
+		if (!args || !xr_strlen(args))
+		{
+			Msg("~ usage: sv_cmd <command>, for example: sv_cmd who");
+			return;
+		}
+		if (!g_pGameLevel || !Level().Server)
+		{
+			Msg("! sv_cmd: this instance is not a server");
+			return;
+		}
+		::luabind::functor<LPCSTR> na_f;
+		if (!ai().script_engine().functor<LPCSTR>("netanomaly_server.on_client_command", na_f))
+		{
+			Msg("! sv_cmd: netanomaly_server.script is not loaded");
+			return;
+		}
+		try
+		{
+			LPCSTR na_res = na_f("console", "CONSOLE", int(65535), args);
+			Msg("%s", na_res ? na_res : "");
+		}
+		catch (...)
+		{
+			Msg("! sv_cmd: server script error");
+		}
+	}
+};
+
 void CCC_RegisterCommands()
 {
+	CMD1(CCC_NetAnomalySrv, "srv");
+	CMD1(CCC_NetAnomalySvCmd, "sv_cmd");
 	//Not needed for a singleplayer-only mod
 	//g_OptConCom.Init();
 

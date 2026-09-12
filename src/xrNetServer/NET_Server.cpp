@@ -247,7 +247,7 @@ IPureServer::EConnect IPureServer::Connect(LPCSTR options, GameDescriptionData& 
 	connect_options = options;
 	psNET_direct_connect = FALSE;
 
-	if (strstr(options, "/single"))
+	if (strstr(options, "/single") && !strstr(Core.Params, "-netcoop"))
 		psNET_direct_connect = TRUE;
 
 	// Parse options
@@ -296,8 +296,21 @@ IPureServer::EConnect IPureServer::Connect(LPCSTR options, GameDescriptionData& 
 		else
 			strncpy_s(tmpStr, ServerPort, 63);
 		dwServerPort = atol(tmpStr);
-		clamp(dwServerPort, u32(START_PORT), u32(END_PORT));
+		clamp(dwServerPort, u32(1024), u32(65535));
 		bPortWasSet = TRUE; //this is not casual game
+	}
+	//netcoop: an alife level change rebuilds the server options and drops portsv=,
+	//so allow a hard override from the command line: -netport <1024..65535>
+	if (strstr(Core.Params, "-netport"))
+	{
+		const char* np = strstr(Core.Params, "-netport") + 8;
+		while (*np && (*np < 48 || *np > 57)) ++np;
+		u32 forced_port = (u32)atol(np);
+		if (forced_port >= 1024 && forced_port <= 65535)
+		{
+			dwServerPort = forced_port;
+			bPortWasSet = TRUE;
+		}
 	}
 	//-------------------------------------------------------------------
 

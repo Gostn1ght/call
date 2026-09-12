@@ -38,3 +38,5 @@ compressor/mod/
 # emacs temp file
 \#*\#
 *~
+# local patch backups
+*.pre-*

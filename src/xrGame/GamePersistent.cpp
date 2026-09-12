@@ -887,6 +887,13 @@ void CGamePersistent::OnAppDeactivate()
 {
 	if (!bEntryFlag) return;
 
+	if (strstr(Core.Params, "-netcoop")) //netcoop: never pause on focus loss
+	{
+		bRestorePause = FALSE;
+		bEntryFlag = FALSE;
+		return;
+	}
+
 	bool bIsMP = (g_pGameLevel && Level().game && GameID() != eGameIDSingle);
 
 	bRestorePause = FALSE;

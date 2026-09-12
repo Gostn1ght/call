@@ -176,6 +176,47 @@ static void set2(lua_State *L, int i, int j)
   lua_rawseti(L, 1, j);
 }
 
+#include <time.h>
+#include <stdio.h>
+
+#define NETANOMALY_SORT_BUDGET_MS 4000
+#define NETANOMALY_SORT_REPORT "C:/Games/NetworkAnomaly/docs/sort_watchdog.txt"
+
+static clock_t netanomaly_sort_deadline = 0;
+static int netanomaly_sort_depth = 0;
+static int netanomaly_sort_reports = 0;
+
+static void netanomaly_sort_report(lua_State *L, const char *why)
+{
+  FILE *f;
+  int lvl;
+  lua_Debug ar;
+  if (netanomaly_sort_reports >= 20) return;
+  netanomaly_sort_reports++;
+  f = fopen(NETANOMALY_SORT_REPORT, "a");
+  if (!f) return;
+  fprintf(f, "--- table.sort aborted (%s)\n", why);
+  for (lvl = 0; lvl < 16; lvl++) {
+    if (!lua_getstack(L, lvl, &ar)) break;
+    if (!lua_getinfo(L, "Sln", &ar)) break;
+    fprintf(f, "  [%d] %s:%d %s %s\n", lvl, ar.short_src, ar.currentline, ar.namewhat ? ar.namewhat : "", ar.name ? ar.name : "");
+  }
+  fputc(10, f);
+  fclose(f);
+}
+
+static void netanomaly_sort_hook(lua_State *L, lua_Debug *hookar)
+{
+  (void)hookar;
+  if (netanomaly_sort_deadline != 0 && clock() > netanomaly_sort_deadline) {
+    lua_sethook(L, NULL, 0, 0);
+    netanomaly_sort_deadline = 0;
+    netanomaly_sort_depth = 0;
+    netanomaly_sort_report(L, "time budget");
+    luaL_error(L, "NetAnomaly watchdog: table.sort comparator exceeded time budget");
+  }
+}
+
 static int sort_comp(lua_State *L, int a, int b)
 {
   if (!lua_isnil(L, 2)) {  /* function? */
@@ -262,7 +303,22 @@ LJLIB_CF(table_sort)
   lua_settop(L, 2);
   if (!tvisnil(L->base+1))
     lj_lib_checkfunc(L, 2);
+  {
+    clock_t now = clock();
+    if (netanomaly_sort_depth <= 0) {
+      netanomaly_sort_depth = 0;
+      netanomaly_sort_deadline = now + (clock_t)((NETANOMALY_SORT_BUDGET_MS / 1000) * CLOCKS_PER_SEC);
+      lua_sethook(L, netanomaly_sort_hook, LUA_MASKCOUNT, 20000);
+    }
+    netanomaly_sort_depth++;
+  }
   auxsort(L, 1, n);
+  netanomaly_sort_depth--;
+  if (netanomaly_sort_depth <= 0) {
+    netanomaly_sort_depth = 0;
+    netanomaly_sort_deadline = 0;
+    lua_sethook(L, NULL, 0, 0);
+  }
   return 0;
 }
 

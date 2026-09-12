@@ -1024,13 +1024,28 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
 
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		CloseHandle(hCheckPresenceMutex);
-		return 1;
+		// NetAnomaly: a coop client may share the install folder with the host,
+		// so the single-instance guard is bypassed for networked launches.
+		// Core.Params is not initialized this early, use the raw command line.
+		LPCSTR na_cmd_line = GetCommandLineA();
+		const bool na_allow_multi = na_cmd_line &&
+			(strstr(na_cmd_line, "-netcoop") || strstr(na_cmd_line, "-multi_instance"));
+		if (!na_allow_multi)
+		{
+			CloseHandle(hCheckPresenceMutex);
+			return 1;
+		}
 	}
 #endif
 #else // DEDICATED_SERVER
     g_dedicated_server = true;
 #endif // DEDICATED_SERVER
+
+	//netanomaly: console-only server instance from the very same build
+	if (strstr(GetCommandLineA(), "-dedicated"))
+	{
+		g_dedicated_server = true;
+	}
 
 	// Title window
 	logoWindow = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_STARTUP), 0, logDlgProc);
@@ -1083,7 +1098,24 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
 	// g_temporary_stuff = &trivial_encryptor::decode;
 
 	compute_build_id();
-	Core._initialize("xray", NULL, TRUE, fsgame[0] ? fsgame : NULL);
+	// NetAnomaly: -logname <suffix> keeps a second local instance from fighting
+	// over xray_<user>.log and over the minidump file name.
+	string64 na_app_name;
+	xr_strcpy(na_app_name, "xray");
+	{
+		LPCSTR na_cmd = GetCommandLineA();
+		LPCSTR na_log = na_cmd ? strstr(na_cmd, "-logname ") : NULL;
+		if (na_log)
+		{
+			string64 na_suffix = {};
+			if (1 == sscanf(na_log + 9, "%[^ ^\t]", na_suffix) && na_suffix[0])
+			{
+				xr_strcpy(na_app_name, "xray_");
+				xr_strcat(na_app_name, na_suffix);
+			}
+		}
+	}
+	Core._initialize(na_app_name, NULL, TRUE, fsgame[0] ? fsgame : NULL);
 
 	InitSettings();
 	Msg(XRAY_MONOLITH_VERSION);

@@ -8,6 +8,7 @@
 #include "object_broker.h"
 #include "gamepersistent.h"
 #include "xrServer.h"
+#include "xrMessages.h"
 #include "../xrEngine/x_ray.h"
 #include "../xrEngine/dedicated_server_only.h"
 #include "../xrEngine/no_single.h"
@@ -364,4 +365,128 @@ void game_sv_Single::restart_simulator(LPCSTR saved_game_name)
 	g_pGamePersistent->LoadTitle();
 	Device.PreCache(60, true, true);
 	pApp->LoadEnd();
+}
+
+// ---------------------------------------------------------------------------
+// NetAnomaly co-op actor
+// game_sv_Single does not spawn actors for additional clients, so we do it here
+// the same way game_sv_mp::SpawnPlayer does, using the story [actor] section.
+// ---------------------------------------------------------------------------
+static bool netcoop_mode()
+{
+	static int s_state = -1;
+	if (s_state < 0)
+		s_state = strstr(Core.Params, "-netcoop") ? 1 : 0;
+	return (s_state == 1);
+}
+
+CSE_ALifeCreatureActor* game_sv_Single::netcoop_host_actor()
+{
+	if (!m_server)
+		return NULL;
+
+	IClient* SV = m_server->GetServerClient();
+	if (!SV)
+		return NULL;
+
+	xrClientData* host = (xrClientData*)SV;
+	return smart_cast<CSE_ALifeCreatureActor*>(host->owner);
+}
+
+void game_sv_Single::netcoop_spawn_actor(ClientID id_who)
+{
+	xrClientData* CL = (xrClientData*)m_server->ID_to_client(id_who);
+	if (!CL)
+		return;
+
+	CSE_ALifeCreatureActor* host = netcoop_host_actor();
+	if (!host)
+	{
+		Msg("! [NetAnomaly] no host actor on server, cannot spawn co-op actor for 0x%08x", id_who.value());
+		return;
+	}
+
+	CSE_Abstract* E = spawn_begin("actor");
+	if (!E)
+	{
+		Msg("! [NetAnomaly] cannot create entity from section [actor]");
+		return;
+	}
+
+	CSE_ALifeCreatureActor* A = smart_cast<CSE_ALifeCreatureActor*>(E);
+	if (!A)
+	{
+		Msg("! [NetAnomaly] section [actor] is not an actor entity");
+		return;
+	}
+
+	string64 nick;
+	if (CL->ps && CL->ps->getName() && CL->ps->getName()[0])
+		xr_strcpy(nick, CL->ps->getName());
+	else if (CL->name.size())
+		xr_strcpy(nick, *CL->name);
+	else
+		xr_sprintf(nick, "player_%u", id_who.value() & 0xffff);
+
+	E->set_name_replace(nick);
+	E->s_flags.assign(M_SPAWN_OBJECT_LOCAL | M_SPAWN_OBJECT_ASPLAYER);
+	E->m_bALifeControl = false;
+	E->s_RP = 0xFE;
+
+	A->s_team = host->s_team;
+	A->m_bOnline = true;
+	A->m_tGraphID = host->m_tGraphID;
+	A->m_tNodeID = host->m_tNodeID;
+
+	Fvector pos = host->o_Position;
+	pos.x += 1.6f;
+	pos.y += 0.3f;
+	A->o_Position = pos;
+	A->o_Angle = host->o_Angle;
+
+	CL->net_PassUpdates = TRUE;
+	if (CL->ps)
+		CL->ps->team = A->s_team;
+
+	spawn_end(E, id_who);
+
+	if (CL->ps && CL->owner)
+		CL->ps->SetGameID(CL->owner->ID);
+
+	Msg("[NetAnomaly] co-op actor '%s' spawned for client 0x%08x eid %u at (%3.2f, %3.2f, %3.2f)",
+		nick, id_who.value(), CL->owner ? CL->owner->ID : u16(0xffff),
+		A->o_Position.x, A->o_Position.y, A->o_Position.z);
+
+	signal_Syncronize();
+}
+
+void game_sv_Single::OnPlayerConnectFinished(ClientID id_who)
+{
+	inherited::OnPlayerConnectFinished(id_who);
+
+	if (!netcoop_mode())
+		return;
+
+	if (!m_server)
+		return;
+
+	xrClientData* CL = (xrClientData*)m_server->ID_to_client(id_who);
+	if (!CL)
+		return;
+
+	IClient* SV = m_server->GetServerClient();
+	if (SV && SV->ID == id_who)
+		return; // the host already owns the story actor
+
+	if (CL->process_id == GetCurrentProcessId())
+		return; // local client of the very same process
+
+	if (CL->owner)
+	{
+		Msg("[NetAnomaly] client 0x%08x already owns entity %u", id_who.value(), CL->owner->ID);
+		return;
+	}
+
+	Msg("[NetAnomaly] spawning co-op actor for client 0x%08x pid %u", id_who.value(), CL->process_id);
+	netcoop_spawn_actor(id_who);
 }

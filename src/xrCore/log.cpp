@@ -137,6 +137,15 @@ void AddOne(const char* split)
 			LogFile.push_back(xr_string(temp.c_str()));
 			last_str = temp;
 			items_count = 0;
+
+			// NetAnomaly: hard cap on the in-memory log, see tools/patch_logcap.py
+			if (LogFile.size() > 40000)
+			{
+				LogFile.erase(LogFile.begin(), LogFile.begin() + 20000);
+				last_str = shared_str("~ [NetAnomaly] log trimmed: 20000 oldest lines dropped");
+				LogFile.push_back(xr_string(last_str.c_str()));
+				items_count = 0;
+			}
 		}
 	}
 

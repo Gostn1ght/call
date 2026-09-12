@@ -425,7 +425,7 @@ BOOL IPureClient::Connect(LPCSTR options)
 			xr_strcpy(portstr, strstr(options, "port=") + 5);
 			if (strchr(portstr, '/')) *strchr(portstr, '/') = 0;
 			psSV_Port = atol(portstr);
-			clamp(psSV_Port, int(START_PORT), int(END_PORT));
+			clamp(psSV_Port, int(1024), int(65535));
 		};
 
 		BOOL bPortWasSet = FALSE;
@@ -436,7 +436,7 @@ BOOL IPureClient::Connect(LPCSTR options)
 			xr_strcpy(portstr, strstr(options, "portcl=") + 7);
 			if (strchr(portstr, '/')) *strchr(portstr, '/') = 0;
 			psCL_Port = atol(portstr);
-			clamp(psCL_Port, int(START_PORT), int(END_PORT));
+			clamp(psCL_Port, int(1024), int(65535));
 			bPortWasSet = TRUE;
 		};
 		//	Msg("* Client connect on port %d\n",psNET_Port);

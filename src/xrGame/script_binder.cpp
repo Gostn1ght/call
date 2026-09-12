@@ -184,6 +184,19 @@ void CScriptBinder::net_Destroy()
 
 void CScriptBinder::set_object(CScriptBinderObject* object)
 {
+	//netcoop: a pure client has no alife simulator, so Lua binders must stay disabled (same as in MP)
+	if (strstr(Core.Params, "-netcoop") && !strstr(Core.Params, "server("))
+	{
+		static bool s_netcoop_bind_logged = false;
+		if (!s_netcoop_bind_logged)
+		{
+			s_netcoop_bind_logged = true;
+			Msg("[NetAnomaly] script binders disabled on netcoop client");
+		}
+		xr_delete(object);
+		return;
+	}
+
 	if (IsGameTypeSingle())
 	{
 		VERIFY2(!m_object, "Cannot bind to the object twice!");
