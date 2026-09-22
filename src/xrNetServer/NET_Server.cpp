@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "NET_Log.h"
+#include "GammaNetPolicy.h"
 
 #pragma warning(push)
 #pragma warning(disable:4995)
@@ -137,7 +138,7 @@ void IClientStatistic::Update(DPN_CONNECTION_INFO& CI)
 
 // {0218FA8B-515B-4bf2-9A5F-2F079D1759F3}
 static const GUID NET_GUID =
-	{0x218fa8b, 0x515b, 0x4bf2, {0x9a, 0x5f, 0x2f, 0x7, 0x9d, 0x17, 0x59, 0xf3}};
+	{0x218fa8d, 0x515b, 0x4bf2, {0x9a, 0x5f, 0x2f, 0x7, 0x9d, 0x17, 0x59, 0xf3}};
 // {8D3F9E5E-A3BD-475b-9E49-B0E77139143C}
 static const GUID CLSID_NETWORKSIMULATOR_DP8SP_TCPIP =
 	{0x8d3f9e5e, 0xa3bd, 0x475b, {0x9e, 0x49, 0xb0, 0xe7, 0x71, 0x39, 0x14, 0x3c}};
@@ -173,7 +174,7 @@ IClient* IPureServer::ID_to_client(ClientID ID, bool ScanAll)
 void
 IPureServer::_Recieve(const void* data, u32 data_size, u32 param)
 {
-	if (data_size >= NET_PacketSizeLimit)
+	if (!data || data_size < sizeof(u16) || data_size >= NET_PacketSizeLimit)
 	{
 		Msg("! too large packet size[%d] received, DoS attack?", data_size);
 		return;
@@ -269,17 +270,7 @@ IPureServer::EConnect IPureServer::Connect(LPCSTR options, GameDescriptionData& 
 		else
 			strncpy_s(password_str, PSW, 63);
 	}
-	if (strstr(options, "maxplayers="))
-	{
-		const char* sMaxPlayers = strstr(options, "maxplayers=") + 11;
-		string64 tmpStr = "";
-		if (strchr(sMaxPlayers, '/'))
-			strncpy_s(tmpStr, sMaxPlayers, strchr(sMaxPlayers, '/') - sMaxPlayers);
-		else
-			strncpy_s(tmpStr, sMaxPlayers, 63);
-		dwMaxPlayers = atol(tmpStr);
-	}
-	if (dwMaxPlayers > 32 || dwMaxPlayers < 1) dwMaxPlayers = 32;
+	dwMaxPlayers = gamma_net::player_limit(options);
 #ifdef DEBUG
 	Msg("MaxPlayers = %d", dwMaxPlayers);
 #endif // #ifdef DEBUG
@@ -770,7 +761,7 @@ BOOL IPureServer::HasBandwidth(IClient* C)
 	if (psNET_Flags.test(NETFLAG_MINIMIZEUPDATES)) dwInterval = 1000; // approx 2 times per second
 
 	HRESULT hr;
-	if (psNET_ServerUpdate != 0 && (dwTime - C->dwTime_LastUpdate) > dwInterval)
+	if (psNET_ServerUpdate != 0 && (dwTime - C->dwTime_LastUpdate) >= dwInterval)
 	{
 		// check queue for "empty" state
 		DWORD dwPending;

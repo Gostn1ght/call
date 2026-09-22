@@ -34,6 +34,13 @@ public:
 	BOOL net_Ready;
 	BOOL net_Accepted;
 
+	bool gamma_snapshot_ready;
+	std::deque<ActorInputCommand> m_pending_inputs;
+	u32 m_last_received_sequence;
+	u32 m_last_processed_sequence;
+	ActorInputCommand m_current_intent;
+	u32 m_last_input_receive_time;
+
 	BOOL net_PassUpdates;
 	u32 net_LastMoveUpdateTime;
 

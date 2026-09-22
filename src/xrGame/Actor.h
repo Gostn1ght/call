@@ -573,7 +573,26 @@ protected:
 	void ConvState(u32 mstate_rl, string128* buf);
 public:
 	virtual BOOL net_Spawn(CSE_Abstract* DC);
+	public:
 	virtual void net_Export(NET_Packet& P); // export to server
+	void net_ExportInput(NET_Packet& P, const ActorInputCommand& cmd);
+	void net_ImportInputAck(NET_Packet& P);
+	
+	u32 m_next_input_sequence = 1;
+	struct ClientPredictionFrame {
+		u32 associated_sequence;
+		float dt;
+		u16 mstate;
+	};
+	std::deque<ClientPredictionFrame> m_client_prediction_history;
+	std::deque<ActorInputCommand> m_client_pending_inputs;
+	bool m_bReplayMode = false;
+	float m_prediction_error = 0.0f;
+	
+	void ReplayPendingInputs();
+	void ResetPredictionState();
+	u32 m_last_applied_server_ack = 0;
+	void ServerProcessInputs(float server_dt);
 	virtual void net_Import(NET_Packet& P); // import from server
 	virtual void net_Destroy();
 	virtual BOOL net_Relevant(); //	{ return getSVU() | getLocal(); };		// relevant for export to server
@@ -589,6 +608,7 @@ protected:
 	Fvector NET_SavedAccel;
 	net_update NET_Last;
 	BOOL NET_WasInterpolating; // previous update was by interpolation or by extrapolation
+	u32 gamma_net_trace_time;
 	u32 NET_Time; // server time of last update
 
 	//---------------------------------------------

@@ -405,6 +405,11 @@ public:
 		parse(op_demo, args, "demo"); // 3. demo
 
 		strlwr(op_server);
+        if (strstr(Core.Params, "-netcoop") && strstr(op_server, "/load"))
+        {
+            Msg("! [GAMMA NetAnomaly] Starting from a single-player save is disabled");
+            return;
+        }
 		protect_Name_strlwr(op_client);
 
 		if (!op_client[0] && strstr(op_server, "single"))

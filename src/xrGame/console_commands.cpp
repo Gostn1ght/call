@@ -1007,6 +1007,12 @@ public:
 
 	virtual void Execute(LPCSTR args)
 	{
+        if (strstr(Core.Params, "-netcoop"))
+        {
+            Msg("! [GAMMA NetAnomaly] Single-player save/load is disabled in multiplayer");
+            return;
+        }
+
 #if 0
 		if (!Level().autosave_manager().ready_for_autosave()) {
 			Msg("! Cannot save the game right now!");
@@ -1094,6 +1100,12 @@ public:
 
 	virtual void Execute(LPCSTR args)
 	{
+        if (strstr(Core.Params, "-netcoop"))
+        {
+            Msg("! [GAMMA NetAnomaly] Single-player save/load is disabled in multiplayer");
+            return;
+        }
+
 		string_path saved_game;
 		strncpy_s(saved_game, sizeof(saved_game), args, _MAX_PATH - 1);
 
@@ -1173,6 +1185,12 @@ public:
 
 	virtual void Execute(LPCSTR args)
 	{
+        if (strstr(Core.Params, "-netcoop"))
+        {
+            Msg("! [GAMMA NetAnomaly] Single-player save/load is disabled in multiplayer");
+            return;
+        }
+
 		string_path saved_game = "";
 		if (args)
 		{

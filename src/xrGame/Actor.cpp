@@ -1125,8 +1125,129 @@ float CActor::currentFOV()
 
 #include "UI\UIInventoryUtilities.h"
 
+void CActor::ResetPredictionState()
+{
+	m_next_input_sequence = 1;
+	m_last_applied_server_ack = 0;
+	m_client_pending_inputs.clear();
+	m_client_prediction_history.clear();
+	m_prediction_error = 0.0f;
+	m_bReplayMode = false;
+}
+
+void CActor::ReplayPendingInputs()
+{
+	m_bReplayMode = true;
+	
+	// Server/Client Simulation Parity: Replay uses actual local simulation ticks
+	for (const auto& frame : m_client_prediction_history) {
+		Fvector accel; accel.set(0,0,0);
+		if (frame.mstate & mcFwd) accel.z += 1.0f;
+		if (frame.mstate & mcBack) accel.z -= 1.0f;
+		if (frame.mstate & mcLStrafe) accel.x -= 1.0f;
+		if (frame.mstate & mcRStrafe) accel.x += 1.0f;
+		if (accel.magnitude() > 1.0f) accel.normalize();
+		
+		float jump = (frame.mstate & mcJump) ? m_fJumpSpeed : 0.0f;
+		
+		// m_bReplayMode blocks sound and animation
+		g_Physics(accel, jump, frame.dt);
+	}
+	
+	m_bReplayMode = false;
+}
+
+void CActor::ServerProcessInputs(float server_dt)
+{
+	xrClientData* CL = nullptr;
+	if (Level().Server) {
+		// PERFORMANCE DEBT: Caching xrClientData on Actor would prevent looping every tick.
+		struct ClientFinder {
+			xrClientData* res = nullptr;
+			u16 id;
+			void operator()(IClient* client) {
+				xrClientData* c = static_cast<xrClientData*>(client);
+				if (c && c->owner && c->owner->ID == id) res = c;
+			}
+		} finder = {nullptr, ID()};
+		Level().Server->ForEachClientDo(finder);
+		CL = finder.res;
+	}
+	
+	if (CL) {
+		// Input Timeout: Neutralize continuous intent if stale (e.g. dropped packets)
+		const u32 M1_INPUT_STALE_TIMEOUT_MS = 500; // TUNING VALUE - REQUIRES RUNTIME VERIFICATION
+		if (Device.dwTimeGlobal - CL->m_last_input_receive_time > M1_INPUT_STALE_TIMEOUT_MS) {
+			CL->m_current_intent.mstate = 0;
+		}
+		
+		bool accumulated_jump = false;
+		if (CL->m_pending_inputs.size() > 0) {
+			while (!CL->m_pending_inputs.empty()) {
+				ActorInputCommand cmd = CL->m_pending_inputs.front();
+				CL->m_pending_inputs.pop_front();
+				
+				if (cmd.mstate & mcJump) accumulated_jump = true; // symbolic edge state
+				
+				CL->m_current_intent = cmd;
+				CL->m_last_processed_sequence = cmd.sequence;
+			}
+			
+			// Restore the jump edge if any command in the collapse batch had it
+			if (accumulated_jump) {
+				CL->m_current_intent.mstate |= mcJump;
+			} else {
+				CL->m_current_intent.mstate &= ~mcJump;
+			}
+		}
+		
+		// Apply to Authoritative Actor state. 
+		// Physics single-step will naturally consume these via the standard g_Physics call at the bottom of UpdateCL().
+		mstate_real = CL->m_current_intent.mstate;
+		mstate_wishful = CL->m_current_intent.mstate;
+		yaw = CL->m_current_intent.yaw;
+		pitch = CL->m_current_intent.pitch;
+		
+		// Build NET_SavedAccel properly so the standard UpdateCL -> g_Physics uses it
+		NET_SavedAccel.set(0,0,0);
+		if (mstate_real & mcFwd) NET_SavedAccel.z += 1.0f;
+		if (mstate_real & mcBack) NET_SavedAccel.z -= 1.0f;
+		if (mstate_real & mcLStrafe) NET_SavedAccel.x -= 1.0f;
+		if (mstate_real & mcRStrafe) NET_SavedAccel.x += 1.0f;
+		if (NET_SavedAccel.magnitude() > 1.0f) NET_SavedAccel.normalize();
+		
+		NET_Jump = (mstate_real & mcJump) ? m_fJumpSpeed : 0.0f;
+		
+		// Clear the edge action so it doesn't repeat infinitely if no new packets arrive
+		CL->m_current_intent.mstate &= ~mcJump;
+		
+		// Send ACK back to the owning client
+		NET_Packet P;
+		P.w_begin(M_CL_INPUT_ACK);
+		P.w_u32(CL->m_last_processed_sequence);
+		P.w_vec3(Position());
+		Fvector vel; vel.set(0,0,0);
+		if (character_physics_support() && character_physics_support()->movement()) {
+			character_physics_support()->movement()->GetCharacterVelocity(vel);
+		}
+		P.w_vec3(vel);
+		// Send Unreliable - NEWEST IS MOST IMPORTANT. Avoids head-of-line blocking for movement.
+		Level().Server->SendTo(CL->ID, P, net_flags(FALSE, TRUE));
+	}
+}
+
 void CActor::UpdateCL()
 {
+	// [M1] Record Client Prediction Frame
+	if (Local() && !OnServer()) {
+		ClientPredictionFrame frame;
+		frame.associated_sequence = m_next_input_sequence; // Map frame to current active sequence
+		frame.dt = Device.fTimeDelta;
+		frame.mstate = mstate_real;
+		
+		if (m_client_prediction_history.size() >= 512) m_client_prediction_history.pop_front();
+		m_client_prediction_history.push_back(frame);
+	}
 	if (g_Alive() && Level().CurrentViewEntity() == this)
 	{
 		if (CurrentGameUI() && (!CurrentGameUI()->TopInputReceiver() || (CurrentGameUI()->TopInputReceiver() && !CurrentGameUI()->TopInputReceiver()->StopAnyMove())) && !m_holder)
@@ -1168,6 +1289,10 @@ void CActor::UpdateCL()
 
 	inherited::UpdateCL();
 	m_pPhysics_support->in_UpdateCL();
+	
+	if (OnServer() && !IsGameTypeSingle()) {
+		ServerProcessInputs(Device.fTimeDelta); // Server authoritative physics step
+	}
 
 	pickup_result_t pickup_result = {true, false};
 	if (g_Alive())
@@ -2234,7 +2359,7 @@ extern BOOL g_legs_enabled;
 
 bool canRenderLegs(CActor* actor, CHolderCustom* m_holder) noexcept
 {
-    return g_legs_enabled
+    return g_legs_enabled && actor == Level().CurrentViewEntity()
         && (legs_in_low_crouch || !(actor->MovingState() & mcCrouch && actor->MovingState() & mcAccel))
         && g_player_hud
         && !m_holder
@@ -2250,7 +2375,7 @@ void CActor::renderable_Render()
     // leg shadows are disabled for DX8 and DX9
     bool validRendererForShadow = (::Render->get_generation() == ::Render->GENERATION_R2) && (::Render->get_dx_level() != 0x00090000);
 
-	if (cam_active == eacFirstEye)
+	if (cam_active == eacFirstEye && this == Level().CurrentViewEntity())
 	{
 		if (::Render->active_phase() == 0) // can render first person body here
 		{

@@ -40,7 +40,7 @@ char* game_cl_Single::getTeamSection(int Team)
 
 void game_cl_Single::OnDifficultyChanged()
 {
-	Actor()->OnDifficultyChanged();
+	if (Actor()) Actor()->OnDifficultyChanged();
 }
 
 #include "ai_space.h"
@@ -73,7 +73,7 @@ float game_cl_Single::GetGameTimeFactor()
 
 void game_cl_Single::SetGameTimeFactor(const float fTimeFactor)
 {
-	Level().Server->game->SetGameTimeFactor(fTimeFactor);
+	if (Level().Server) { Level().Server->game->SetGameTimeFactor(fTimeFactor); }
 }
 
 ALife::_TIME_ID game_cl_Single::GetEnvironmentGameTime()
@@ -95,7 +95,7 @@ float game_cl_Single::GetEnvironmentGameTimeFactor()
 void game_cl_Single::SetEnvironmentGameTimeFactor(const float fTimeFactor)
 {
 	if (ai().get_alife() && ai().alife().initialized())
-		Level().Server->game->SetGameTimeFactor(fTimeFactor);
+		if (Level().Server) { Level().Server->game->SetGameTimeFactor(fTimeFactor); }
 	else
 		inherited::SetEnvironmentGameTimeFactor(fTimeFactor);
 }

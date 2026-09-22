@@ -208,9 +208,9 @@ extern int showActorBody;
 extern xr_unordered_set<CDemoRecord*> pDemoRecords;
 void player_legs_controller::update(CActor* actor, bool isShadowPass)
 {
-    actor->XFORMShadow.set(actor->XFORM());
+    if (actor) actor->XFORMShadow.set(actor->XFORM());
 
-    if (!g_legs_enabled || showActorBody != 0 || !actor)
+    if (!actor || actor != Level().CurrentViewEntity() || !g_legs_enabled || showActorBody != 0)
     {
         destroy();
         return;

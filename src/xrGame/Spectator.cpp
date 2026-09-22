@@ -557,7 +557,7 @@ bool CSpectator::SelectNextPlayerToLook(bool const search_next)
 	game_cl_GameState::PLAYERS_MAP_IT it = Game().players.begin(),
 	                                  ite = Game().players.end();
 	u16 PPCount = 0;
-	CActor* PossiblePlayers[32];
+	CActor* PossiblePlayers[MAX_PLAYERS_COUNT];
 	int last_player_idx = -1;
 	for (; it != ite; ++it)
 	{
@@ -576,6 +576,7 @@ bool CSpectator::SelectNextPlayerToLook(bool const search_next)
 		{
 			last_player_idx = PPCount;
 		}
+		if (PPCount >= MAX_PLAYERS_COUNT) break;
 		PossiblePlayers[PPCount++] = A;
 	};
 	if (!search_next)

@@ -417,6 +417,7 @@ void game_sv_Single::netcoop_spawn_actor(ClientID id_who)
 	if (!A)
 	{
 		Msg("! [NetAnomaly] section [actor] is not an actor entity");
+		F_entity_Destroy(E);
 		return;
 	}
 
@@ -455,7 +456,7 @@ void game_sv_Single::netcoop_spawn_actor(ClientID id_who)
 
 	Msg("[NetAnomaly] co-op actor '%s' spawned for client 0x%08x eid %u at (%3.2f, %3.2f, %3.2f)",
 		nick, id_who.value(), CL->owner ? CL->owner->ID : u16(0xffff),
-		A->o_Position.x, A->o_Position.y, A->o_Position.z);
+		pos.x, pos.y, pos.z);
 
 	signal_Syncronize();
 }
@@ -478,7 +479,7 @@ void game_sv_Single::OnPlayerConnectFinished(ClientID id_who)
 	if (SV && SV->ID == id_who)
 		return; // the host already owns the story actor
 
-	if (CL->process_id == GetCurrentProcessId())
+	if (CL->flags.bLocal)
 		return; // local client of the very same process
 
 	if (CL->owner)

@@ -131,7 +131,7 @@ void CLevel::net_Stop()
 	if (g_tutorial && !g_tutorial->Persistent())
 		g_tutorial->Stop();
 
-	if (g_tutorial2 && !g_tutorial->Persistent())
+	if (g_tutorial2 && !g_tutorial2->Persistent())
 		g_tutorial2->Stop();
 
 	bReady = false;
@@ -178,7 +178,7 @@ void CLevel::net_Stop()
 
 void CLevel::ClientSend()
 {
-	if (GameID() != eGameIDSingle && OnClient())
+	if ((GameID() != eGameIDSingle || strstr(Core.Params, "-netcoop")) && OnClient())
 	{
 		if (!net_HasBandwidth()) return;
 	};

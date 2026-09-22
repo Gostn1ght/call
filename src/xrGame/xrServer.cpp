@@ -4,6 +4,8 @@
 
 #include "pch_script.h"
 #include "xrServer.h"
+#include "actor_defs.h"
+
 #include "xrMessages.h"
 #include "xrServer_Objects_ALife_All.h"
 #include "level.h"
@@ -22,6 +24,7 @@
 #include "screenshot_server.h"
 #include "xrServer_info.h"
 #include <functional>
+#include "../xrNetServer/GammaNetPolicy.h"
 
 #pragma warning(push)
 #pragma warning(disable:4995)
@@ -42,6 +45,7 @@ void xrClientData::Clear()
 	owner = NULL;
 	net_Ready = FALSE;
 	net_Accepted = FALSE;
+	gamma_snapshot_ready = false;
 	net_PassUpdates = TRUE;
 	m_ping_warn.m_maxPingWarnings = 0;
 	m_ping_warn.m_dwLastMaxPingWarningTime = 0;
@@ -139,6 +143,9 @@ IClient* xrServer::client_Find_Get(ClientID ID)
 u32 g_sv_Client_Reconnect_Time = 3;
 
 void xrServer::client_Destroy(IClient* C)
+{
+	xrClientData* CL = (xrClientData*)C;
+	CL->m_pending_inputs.clear(); // Disconnect cleanup
 {
 	// Delete assosiated entity
 	// xrClientData*	D = (xrClientData*)C;
@@ -282,6 +289,7 @@ void _stdcall xrServer::SendGameUpdateTo(IClient* client)
 {
 	xrClientData* xr_client = static_cast<xrClientData*>(client);
 	VERIFY(xr_client);
+	xr_client->gamma_snapshot_ready = false;
 	if (!xr_client->net_Ready)
 	{
 		return;
@@ -296,6 +304,7 @@ void _stdcall xrServer::SendGameUpdateTo(IClient* client)
 		return;
 	}
 
+	xr_client->gamma_snapshot_ready = true;
 	NET_Packet Packet;
 	u16 PacketType = M_UPDATE;
 	Packet.w_begin(PacketType);
@@ -351,7 +360,19 @@ void xrServer::SendUpdatePacketsToAll()
 		if (to_send.B.count > 2)
 		{
 			m_last_updates_size += to_send.B.count;
-			SendBroadcast(GetServerClient()->ID, to_send, net_flags(FALSE,TRUE));
+            struct SnapshotSender
+            {
+                xrServer* server;
+                NET_Packet* packet;
+                void operator()(IClient* client)
+                {
+                    xrClientData* peer = static_cast<xrClientData*>(client);
+                    if (client == server->GetServerClient() || !client->flags.bConnected || !peer->gamma_snapshot_ready)
+                        return;
+                    server->SendTo(client->ID, *packet, net_flags(FALSE, TRUE));
+                }
+            } send = {this, &to_send};
+            ForEachClientDo(send);
 			if (Level().IsDemoSave())
 			{
 				Level().SavePacket(to_send);
@@ -362,8 +383,9 @@ void xrServer::SendUpdatePacketsToAll()
 
 void xrServer::SendUpdatesToAll()
 {
-	if (IsGameTypeSingle())
+	if (IsGameTypeSingle() && !strstr(Core.Params, "-netcoop"))
 		return;
+	if (!GetServerClient()) return;
 
 	KickCheaters();
 
@@ -371,10 +393,10 @@ void xrServer::SendUpdatesToAll()
 	//sending game_update 
 	fastdelegate::FastDelegate1<IClient*, void> sendtofd;
 	sendtofd.bind(this, &xrServer::SendGameUpdateTo);
-	ForEachClientDoSender(sendtofd);
 
-	if ((Device.dwTimeGlobal - m_last_update_time) >= u32(1000 / psNET_ServerUpdate))
+	if ((Device.dwTimeGlobal - m_last_update_time) >= u32(1000 / (psNET_ServerUpdate > 0 ? psNET_ServerUpdate : 30)))
 	{
+		ForEachClientDoSender(sendtofd);
 		MakeUpdatePackets();
 		SendUpdatePacketsToAll();
 
@@ -403,6 +425,7 @@ void console_log_cb(LPCSTR text)
 
 u32 xrServer::OnDelayedMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadcasting with "flags" as returned
 {
+	if (P.B.count < sizeof(u16) || !ID_to_client(sender)) return 0;
 	u16 type;
 	P.r_begin(type);
 
@@ -459,7 +482,7 @@ u32 xrServer::OnDelayedMessage(NET_Packet& P, ClientID sender) // Non-Zero means
 		break;
 	case M_FILE_TRANSFER:
 		{
-			m_file_transfers->on_message(&P, sender);
+			if (m_file_transfers) m_file_transfers->on_message(&P, sender);
 		}
 		break;
 	}
@@ -482,15 +505,78 @@ extern float g_fCatchObjectTime;
 
 u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadcasting with "flags" as returned
 {
+	if (P.B.count < sizeof(u16)) return 0;
 	u16 type;
 	P.r_begin(type);
 #ifdef DEBUG
 	VERIFY(verify_entities());
 #endif
 	xrClientData* CL = ID_to_client(sender);
+    if (!CL) return 0;
+    if (strstr(Core.Params, "-netcoop"))
+    {
+        switch (type)
+        {
+        case M_SAVE_GAME: case M_SAVE_PACKET: case M_LOAD_GAME: case M_RELOAD_GAME:
+            Msg("! [GAMMA NetAnomaly] Single-player save/load packet rejected");
+            return 0; // Also reject the internal host: SP snapshots cannot persist multiplayer accounts.
+        default: break;
+        }
+    }
+    if (!CL->flags.bLocal)
+    {
+        switch (type)
+        {
+        case M_CL_INPUT:
+	{
+		// Basic validation & ownership check handled via Sender ClientID -> Actor
+		CSE_Abstract* e = entity_Create("actor"); // Stub logic for routing
+	}
+	break;
+	case M_UPDATE: case M_SPAWN: case M_SAVE_GAME: case M_SAVE_PACKET:
+        case M_LOAD_GAME: case M_RELOAD_GAME: case M_CHANGE_LEVEL:
+        case M_CHANGE_LEVEL_GAME: case M_SWITCH_DISTANCE:
+            return 0; // Only the authoritative ALife host can mutate global world state.
+        default: break;
+        }
+    }
 
 	switch (type)
 	{
+	case M_CL_INPUT:
+	{
+		if (!CL || !CL->owner) break; // Ownership validation: sender must control an entity
+		if (P.B.count - P.r_tell() < M_CL_INPUT_WIRE_SIZE) break; // ABI-independent Bounds check
+		
+		ActorInputCommand cmd;
+		P.r_u32(cmd.sequence);
+		P.r_u16(cmd.mstate);
+		P.r_float(cmd.yaw);
+		P.r_float(cmd.pitch);
+		
+		// Finite validation
+		if (!_valid(cmd.yaw) || !_valid(cmd.pitch)) break;
+		// Yaw/Pitch Limits
+		cmd.yaw = angle_normalize_signed(cmd.yaw);
+		cmd.pitch = angle_normalize_signed(cmd.pitch);
+		clamp(cmd.pitch, -PI_DIV_2, PI_DIV_2);
+		
+		// Symbolic MState flags
+		const u16 ALLOWED_MSTATE_FLAGS = mcFwd | mcBack | mcLStrafe | mcRStrafe | mcCrouch | mcAccel | mcJump | mcSprint | mcLLookout | mcRLookout;
+		if (cmd.mstate & ~ALLOWED_MSTATE_FLAGS) break;
+		
+		// Sequence logic
+		if (is_sequence_newer(cmd.sequence, CL->m_last_received_sequence) && 
+		    is_sequence_in_forward_window(cmd.sequence, CL->m_last_received_sequence)) {
+			CL->m_last_received_sequence = cmd.sequence;
+			CL->m_last_input_receive_time = Device.dwTimeGlobal;
+			if (CL->m_pending_inputs.size() >= 64) {
+				CL->m_pending_inputs.pop_front(); // DROP OLDEST to avoid infinite lag
+			}
+			CL->m_pending_inputs.push_back(cmd);
+		}
+	}
+	break;
 	case M_UPDATE:
 		{
 			Process_update(P, sender); // No broadcast
@@ -521,8 +607,12 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 			NET_Packet tmpP;
 			while (!P.r_eof())
 			{
-				tmpP.B.count = P.r_u8();
-				P.r(&tmpP.B.data, tmpP.B.count);
+                tmpP.B.count = P.r_u8();
+                if (tmpP.B.count < sizeof(u16) || tmpP.B.count > P.B.count - P.r_tell()) break;
+                P.r(&tmpP.B.data, tmpP.B.count);
+                u16 nested_type;
+                CopyMemory(&nested_type, tmpP.B.data, sizeof(nested_type));
+                if (nested_type == M_EVENT_PACK) break; // No recursive packs / stack exhaustion.
 
 				OnMessage(tmpP, sender);
 			};
@@ -534,14 +624,18 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 			if (!CL) break;
 			CL->net_Ready = TRUE;
 
-			if (!CL->net_PassUpdates)
-				break;
+            if (!CL->net_PassUpdates || !CL->owner || P.B.count < 8) break;
+            u16 object_id;
+            CopyMemory(&object_id, P.B.data + 2, sizeof(object_id));
+            if (object_id != CL->owner->ID) break; // A client may update only its own actor.
+            if (IsGameTypeSingle() && strstr(Core.Params, "-netcoop") &&
+                !gamma_net::valid_coop_actor(P.B.data + 8, P.B.count - 8)) break;
 			//-------------------------------------------------------------------
 			u32 ClientPing = CL->stats.getPing();
 			P.w_seek(P.r_tell() + 2, &ClientPing, 4);
 			//-------------------------------------------------------------------
 			if (SV_Client)
-				SendTo(SV_Client->ID, P, net_flags(TRUE, TRUE));
+				SendTo(SV_Client->ID, P, net_flags(FALSE, TRUE));
 #ifdef DEBUG
 			VERIFY(verify_entities());
 #endif
@@ -557,7 +651,11 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		break;
 		//-------------------------------------------------------------------
 	case M_CL_INPUT:
-		{
+        {
+            if (!CL->owner || P.B.count < 4) break;
+            u16 object_id;
+            CopyMemory(&object_id, P.B.data + 2, sizeof(object_id));
+            if (object_id != CL->owner->ID) break;
 			xrClientData* CL = ID_to_client(sender);
 			if (CL) CL->net_Ready = TRUE;
 			if (SV_Client) SendTo(SV_Client->ID, P, net_flags(TRUE, TRUE));
@@ -648,6 +746,8 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		break;
 	case M_NETANOMALY_CMD:
 		{
+			if (!CL->flags.bLocal) break;
+			if (P.B.count < 3 || P.B.count > 4098 || !memchr(P.B.data + 2, 0, P.B.count - 2)) break;
 			//netanomaly: text command channel client -> server, handled in lua
 			string4096 na_text;
 			na_text[0] = 0;
@@ -657,7 +757,7 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 			int na_eid = (na_cl && na_cl->owner) ? int(na_cl->owner->ID) : int(65535);
 			string64 na_cid;
 			xr_sprintf(na_cid, "%08x", sender.value());
-			Msg("[NetAnomaly] cmd from [%s] 0x%s eid=%d : %s", na_name, na_cid, na_eid, na_text);
+			Msg("[NetAnomaly] local command from [%s] eid=%d", na_name, na_eid);
 			string4096 na_reply;
 			na_reply[0] = 0;
 			::luabind::functor<LPCSTR> na_f;
@@ -962,7 +1062,7 @@ void xrServer::Server_Client_Check(IClient* CL)
 		return;
 	};
 
-	if (CL->process_id == GetCurrentProcessId())
+	if (CL->process_id == GetCurrentProcessId() && CL->ID == Level().GetClientID())
 	{
 		CL->flags.bLocal = 1;
 		SV_Client = (xrClientData*)CL;

@@ -9,7 +9,8 @@
 #include "game_sv_item_respawner.h"
 #include "../xrNetServer/NET_Server.h"
 
-#define MAX_PLAYERS_COUNT 32
+#include "../xrNetServer/GammaNetPolicy.h"
+#define MAX_PLAYERS_COUNT gamma_net::max_client_states
 
 enum ERoundEnd_Result
 {

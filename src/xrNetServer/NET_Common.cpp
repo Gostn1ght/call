@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "NET_Common.h"
+#include "GammaNetPolicy.h"
 
 /*#ifdef DEBUG
 void PrintParsedPacket(const char* message, u16 message_type, const void* packet_data, u32 packet_size)
@@ -196,15 +197,25 @@ MultipacketSender::_FlushSendBuffer(u32 timeout, Buffer* buf)
 void
 MultipacketReciever::RecievePacket(const void* packet_data, u32 packet_sz, u32 param)
 {
-	MultipacketHeader* header = (MultipacketHeader*)packet_data;
-	u8 data[MaxMultipacketSize];
+	if (!packet_data || packet_sz <= sizeof(MultipacketHeader) || packet_sz > MaxMultipacketSize)
+        return;
+    MultipacketHeader header_value;
+    CopyMemory(&header_value, packet_data, sizeof(header_value));
+    const MultipacketHeader* header = &header_value;
+    if (header->unpacked_size < sizeof(u16) || header->unpacked_size > MaxMultipacketSize)
+        return;
+    u8 data[MaxMultipacketSize];
 
 	if (header->tag != NET_TAG_MERGED && header->tag != NET_TAG_NONMERGED)
 		return;
 
-	Compressor.Decompress(data, sizeof(data),
+	const u16 decoded = Compressor.Decompress(data, sizeof(data),
 	                      (u8*)packet_data + sizeof(MultipacketHeader), packet_sz - sizeof(MultipacketHeader)
 	);
+
+    if (decoded != header->unpacked_size ||
+        !gamma_net::valid_frame(data, decoded, header->tag == NET_TAG_MERGED, NET_PacketSizeLimit))
+        return;
 
 #if NET_LOG_PACKETS
     Msg( "#receive multi-packet %u", packet_sz );

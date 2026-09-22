@@ -15,7 +15,7 @@
 
 // {0218FA8B-515B-4bf2-9A5F-2F079D1759F3}
 static const GUID NET_GUID =
-	{0x218fa8b, 0x515b, 0x4bf2, {0x9a, 0x5f, 0x2f, 0x7, 0x9d, 0x17, 0x59, 0xf3}};
+	{0x218fa8d, 0x515b, 0x4bf2, {0x9a, 0x5f, 0x2f, 0x7, 0x9d, 0x17, 0x59, 0xf3}};
 
 // {8D3F9E5E-A3BD-475b-9E49-B0E77139143C}
 static const GUID CLSID_NETWORKSIMULATOR_DP8SP_TCPIP =
@@ -785,6 +785,7 @@ void IPureClient::Disconnect()
 
 	net_Connected = EnmConnectionWait;
 	net_Syncronised = FALSE;
+	net_ClientID.set(0);
 }
 
 HRESULT IPureClient::net_Handler(u32 dwMessageType, PVOID pMessage)
@@ -903,6 +904,7 @@ HRESULT IPureClient::net_Handler(u32 dwMessageType, PVOID pMessage)
 			case DPN_MSGID_CONNECT_COMPLETE:
 				{
 					PDPNMSG_CONNECT_COMPLETE pMsg = (PDPNMSG_CONNECT_COMPLETE)pMessage;
+					if (SUCCEEDED(pMsg->hResultCode)) net_ClientID.set(pMsg->dpnidLocal);
 #ifdef DEBUG
 //					const char* x = DXGetErrorString9(pMsg->hResultCode);
 					if (pMsg->hResultCode != S_OK)

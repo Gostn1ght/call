@@ -6,6 +6,32 @@
 // CL	== client 2 server message
 // SV	== server 2 client message
 
+struct ActorInputCommand {
+	u32 sequence;
+	u16 mstate;
+	float yaw;
+	float pitch;
+};
+
+constexpr u32 M_CL_INPUT_WIRE_SIZE = 14;
+
+inline bool is_sequence_newer(u32 incoming, u32 last) {
+	u32 delta = incoming - last;
+	return delta > 0 && delta <= 0x7FFFFFFF;
+}
+
+inline bool is_sequence_newer_or_equal(u32 incoming, u32 last) {
+	if (incoming == last) return true;
+	return is_sequence_newer(incoming, last);
+}
+
+const u32 M1_MAX_SEQUENCE_FORWARD_WINDOW = 10000;
+
+inline bool is_sequence_in_forward_window(u32 incoming, u32 last) {
+	u32 delta = incoming - last;
+	return delta > 0 && delta <= M1_MAX_SEQUENCE_FORWARD_WINDOW;
+}
+
 enum
 {
 	M_UPDATE = 0,
@@ -28,10 +54,13 @@ enum
 	M_EVENT,
 	// Game Event
 	M_CL_INPUT,
+	M_CL_INPUT_ACK,
 	// Client Input Data
 	//----------- for E3 -----------------------------
 	M_CL_UPDATE,
 	M_UPDATE_OBJECTS,
+	M_CL_INPUT,
+	M_CL_INPUT_ACK,
 	//-------------------------------------------------
 	M_CLIENTREADY,
 	// Client has finished to load level and are ready to play

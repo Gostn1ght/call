@@ -85,6 +85,14 @@ void CLevel::ClientReceive()
 		P->r_begin(m_type);
 		switch (m_type)
 		{
+		case M_CL_INPUT_ACK:
+			{
+				if (CurrentEntity()) {
+					CActor* pActor = smart_cast<CActor*>(CurrentEntity());
+					if (pActor) pActor->net_ImportInputAck(*P);
+				}
+			}
+			break;
 		case M_SPAWN:
 			{
 				if (!bReady) //!m_bGameConfigStarted || 

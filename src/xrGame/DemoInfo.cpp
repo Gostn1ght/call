@@ -116,7 +116,7 @@ void demo_info::read_from_file(CStreamReader* file_to_read)
 
 	m_players_count = file_to_read->r_u32();
 
-	R_ASSERT(m_players_count < MAX_PLAYERS_COUNT);
+	R_ASSERT(m_players_count <= MAX_PLAYERS_COUNT);
 
 	delete_data(m_players);
 

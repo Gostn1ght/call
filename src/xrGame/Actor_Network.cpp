@@ -85,8 +85,82 @@ void CActor::ConvState(u32 mstate_rl, string128* buf)
 	if (m_bJumpKeyPressed) xr_strcat(*buf, "+Jumping ");
 };
 //--------------------------------------------------------------------
+void CActor::net_ExportInput(NET_Packet& P, const ActorInputCommand& cmd)
+{
+	P.w_begin(M_CL_INPUT);
+	P.w_u32(cmd.sequence);
+	P.w_u16(cmd.mstate);
+	P.w_float(cmd.yaw);
+	P.w_float(cmd.pitch);
+}
+
+void CActor::net_ImportInputAck(NET_Packet& P)
+{
+	u32 ack_seq;
+	Fvector auth_pos;
+	Fvector auth_vel;
+	P.r_u32(ack_seq);
+	P.r_vec3(auth_pos);
+	P.r_vec3(auth_vel);
+	
+	// STRICTLY NEWER ACK Sequence Validation (Drop reordered/delayed/duplicate ACKs)
+	if (!is_sequence_newer(ack_seq, m_last_applied_server_ack)) return;
+	m_last_applied_server_ack = ack_seq;
+	
+	// Prediction error tracking
+	Fvector pred_pos = Position();
+	m_prediction_error = pred_pos.distance_to(auth_pos);
+	
+	// Remove acknowledged network inputs
+	while (!m_client_pending_inputs.empty()) {
+		if (is_sequence_newer_or_equal(ack_seq, m_client_pending_inputs.front().sequence)) {
+			m_client_pending_inputs.pop_front();
+		} else {
+			break;
+		}
+	}
+	
+	// Remove acknowledged prediction history frames
+	while (!m_client_prediction_history.empty()) {
+		if (is_sequence_newer_or_equal(ack_seq, m_client_prediction_history.front().associated_sequence)) {
+			m_client_prediction_history.pop_front();
+		} else {
+			break;
+		}
+	}
+	
+	// Snap to authoritative state completely
+	if (character_physics_support() && character_physics_support()->movement()) {
+		character_physics_support()->movement()->SetPosition(auth_pos);
+		character_physics_support()->movement()->SetVelocity(auth_vel);
+	}
+	
+	// Replay
+	ReplayPendingInputs();
+}
+
 void CActor::net_Export(NET_Packet& P) // export to server
 {
+	// [M1] Absolute position authority removed for owning client
+	if (Local() && !OnServer()) {
+		// Client Sampling and Send
+		ActorInputCommand cmd;
+		cmd.sequence = m_next_input_sequence++;
+		cmd.mstate = mstate_real;
+		cmd.yaw = yaw;
+		cmd.pitch = pitch;
+		
+		// Buffer Overflow Policy: Stop prediction until next ACK, drop oldest.
+		if (m_client_pending_inputs.size() >= 64) {
+			m_client_pending_inputs.pop_front(); 
+		}
+		m_client_pending_inputs.push_back(cmd);
+		
+		NET_Packet PInput;
+		net_ExportInput(PInput, cmd); // Wire format writer (omits client_dt)
+		Level().Send(PInput, net_flags(TRUE, TRUE)); // Reliable input transport
+	}
+
 	//CSE_ALifeCreatureAbstract
 	u8 flags = 0;
 	P.w_float(GetfHealth());
@@ -302,6 +376,7 @@ void CActor::net_Import(NET_Packet& P) // import from server
 
 void CActor::net_Import_Base(NET_Packet& P)
 {
+{
 	net_update N;
 
 	u8 flags;
@@ -394,7 +469,12 @@ void CActor::net_Import_Base(NET_Packet& P)
 	}
 	else
 	{
-		NET.push_back(N);
+		// [M1] Client position rejection: Server ignores client's absolute position updates
+			if (OnServer() && !Local()) {
+				// Packet drained, but we do NOT apply the movement state to the authoritative server Actor.
+			} else {
+				NET.push_back(N);
+			}
 		if (NET.size() > 5) NET.pop_front();
 	}
 	//-----------------------------------------------
@@ -489,7 +569,10 @@ void CActor::net_Import_Physic(NET_Packet& P)
 #ifdef DEBUG
 				VERIFY(valid_pos(N_A.State.position,ph_boundaries()));
 #endif
+				// [M1] Client position rejection: Server ignores client's physical state
+			if (OnServer() && !Local()) {} else {
 				NET_A.push_back(N_A);
+			}
 				if (NET_A.size() > 5) NET_A.pop_front();
 			};
 
@@ -510,6 +593,7 @@ void CActor::net_Import_Physic_proceed()
 
 BOOL CActor::net_Spawn(CSE_Abstract* DC)
 {
+	ResetPredictionState();
 	m_holder_id = ALife::_OBJECT_ID(-1);
 	m_feel_touch_characters = 0;
 	m_snd_noise = 0.0f;
@@ -719,6 +803,8 @@ namespace crash_saving {
 }
 
 void CActor::net_Destroy()
+{
+	ResetPredictionState();
 {
 	inherited::net_Destroy();
 
