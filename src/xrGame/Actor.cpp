@@ -1205,8 +1205,8 @@ void CActor::ServerProcessInputs(float server_dt)
 		// Physics single-step will naturally consume these via the standard g_Physics call at the bottom of UpdateCL().
 		mstate_real = CL->m_current_intent.mstate;
 		mstate_wishful = CL->m_current_intent.mstate;
-		yaw = CL->m_current_intent.yaw;
-		pitch = CL->m_current_intent.pitch;
+		unaffected_r_torso.yaw = CL->m_current_intent.yaw;
+		unaffected_r_torso.pitch = CL->m_current_intent.pitch;
 		
 		// Build NET_SavedAccel properly so the standard UpdateCL -> g_Physics uses it
 		NET_SavedAccel.set(0,0,0);
@@ -1216,6 +1216,7 @@ void CActor::ServerProcessInputs(float server_dt)
 		if (mstate_real & mcRStrafe) NET_SavedAccel.x += 1.0f;
 		if (NET_SavedAccel.magnitude() > 1.0f) NET_SavedAccel.normalize();
 		
+		extern float NET_Jump;
 		NET_Jump = (mstate_real & mcJump) ? m_fJumpSpeed : 0.0f;
 		
 		// Clear the edge action so it doesn't repeat infinitely if no new packets arrive
