@@ -20,6 +20,7 @@
 #include "script_export_space.h"
 
 #include "player_hud_legs.h"
+#include "xrmessages.h"
 
 #ifdef STATIONARYMGUN_NEW
 #include "WeaponStatMgun.h"
@@ -584,8 +585,8 @@ public:
 		float dt;
 		u16 mstate;
 	};
-	std::deque<ClientPredictionFrame> m_client_prediction_history;
-	std::deque<ActorInputCommand> m_client_pending_inputs;
+	xr_deque<ClientPredictionFrame> m_client_prediction_history;
+	xr_deque<ActorInputCommand> m_client_pending_inputs;
 	bool m_bReplayMode = false;
 	float m_prediction_error = 0.0f;
 	

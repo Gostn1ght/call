@@ -14,6 +14,7 @@
 #include "secure_messaging.h"
 #include "xrServer_updates_compressor.h"
 #include "xrClientsPool.h"
+#include "xrmessages.h"
 
 #ifdef DEBUG
 //. #define SLOW_VERIFY_ENTITIES
@@ -35,7 +36,7 @@ public:
 	BOOL net_Accepted;
 
 	bool gamma_snapshot_ready;
-	std::deque<ActorInputCommand> m_pending_inputs;
+	xr_deque<ActorInputCommand> m_pending_inputs;
 	u32 m_last_received_sequence;
 	u32 m_last_processed_sequence;
 	ActorInputCommand m_current_intent;

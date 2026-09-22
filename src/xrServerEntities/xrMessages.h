@@ -59,8 +59,6 @@ enum
 	//----------- for E3 -----------------------------
 	M_CL_UPDATE,
 	M_UPDATE_OBJECTS,
-	M_CL_INPUT,
-	M_CL_INPUT_ACK,
 	//-------------------------------------------------
 	M_CLIENTREADY,
 	// Client has finished to load level and are ready to play
