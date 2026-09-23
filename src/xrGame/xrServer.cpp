@@ -146,7 +146,6 @@ void xrServer::client_Destroy(IClient* C)
 {
 	xrClientData* CL = (xrClientData*)C;
 	CL->m_pending_inputs.clear(); // Disconnect cleanup
-{
 	// Delete assosiated entity
 	// xrClientData*	D = (xrClientData*)C;
 	// CSE_Abstract* E = D->owner;

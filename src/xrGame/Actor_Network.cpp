@@ -376,7 +376,6 @@ void CActor::net_Import(NET_Packet& P) // import from server
 
 void CActor::net_Import_Base(NET_Packet& P)
 {
-{
 	net_update N;
 
 	u8 flags;
@@ -805,7 +804,6 @@ namespace crash_saving {
 void CActor::net_Destroy()
 {
 	ResetPredictionState();
-{
 	inherited::net_Destroy();
 
 	if (m_holder_id != ALife::_OBJECT_ID(-1))
