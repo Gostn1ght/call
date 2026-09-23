@@ -584,6 +584,8 @@ public:
 		u32 associated_sequence;
 		float dt;
 		u16 mstate;
+		Fvector accel;
+		float jump;
 	};
 	xr_deque<ClientPredictionFrame> m_client_prediction_history;
 	xr_deque<ActorInputCommand> m_client_pending_inputs;
@@ -593,7 +595,7 @@ public:
 	void ReplayPendingInputs();
 	void ResetPredictionState();
 	u32 m_last_applied_server_ack = 0;
-	void ServerProcessInputs(float server_dt);
+	bool ServerProcessInputs(float server_dt);
 	virtual void net_Import(NET_Packet& P); // import from server
 	virtual void net_Destroy();
 	virtual BOOL net_Relevant(); //	{ return getSVU() | getLocal(); };		// relevant for export to server

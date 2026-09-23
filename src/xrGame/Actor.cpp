@@ -1054,11 +1054,11 @@ void CActor::g_Physics(Fvector& _accel, float jump, float dt)
 		character_physics_support()->movement()->bSleep = false;
 	}
 
-	if (Local() && g_Alive())
+	if (Local() && g_Alive() && !m_bReplayMode)
 	{
         CPHMovementControl* const mctrl = character_physics_support()->movement();
 
-		if (mctrl->gcontact_Was)
+		if (mctrl->gcontact_Was && !g_dedicated_server)
 			Cameras().AddCamEffector(xr_new<CEffectorFall>(mctrl->gcontact_Power));
 
 		if (!fis_zero(mctrl->gcontact_HealthLost))
@@ -1139,25 +1139,18 @@ void CActor::ReplayPendingInputs()
 {
 	m_bReplayMode = true;
 	
-	// Server/Client Simulation Parity: Replay uses actual local simulation ticks
+	const u32 saved_state = mstate_real;
 	for (const auto& frame : m_client_prediction_history) {
-		Fvector accel; accel.set(0,0,0);
-		if (frame.mstate & mcFwd) accel.z += 1.0f;
-		if (frame.mstate & mcBack) accel.z -= 1.0f;
-		if (frame.mstate & mcLStrafe) accel.x -= 1.0f;
-		if (frame.mstate & mcRStrafe) accel.x += 1.0f;
-		if (accel.magnitude() > 1.0f) accel.normalize();
-		
-		float jump = (frame.mstate & mcJump) ? m_fJumpSpeed : 0.0f;
-		
-		// m_bReplayMode blocks sound and animation
-		g_Physics(accel, jump, frame.dt);
+		mstate_real = frame.mstate;
+		Fvector accel = frame.accel;
+		g_Physics(accel, frame.jump, frame.dt);
 	}
+	mstate_real = saved_state;
 	
 	m_bReplayMode = false;
 }
 
-void CActor::ServerProcessInputs(float server_dt)
+bool CActor::ServerProcessInputs(float server_dt)
 {
 	xrClientData* CL = nullptr;
 	if (Level().Server) {
@@ -1174,7 +1167,10 @@ void CActor::ServerProcessInputs(float server_dt)
 		CL = finder.res;
 	}
 	
-	if (CL) {
+	if (!CL || CL->flags.bLocal)
+		return false;
+
+	{
 		// Input Timeout: Neutralize continuous intent if stale (e.g. dropped packets)
 		const u32 M1_INPUT_STALE_TIMEOUT_MS = 500; // TUNING VALUE - REQUIRES RUNTIME VERIFICATION
 		if (Device.dwTimeGlobal - CL->m_last_input_receive_time > M1_INPUT_STALE_TIMEOUT_MS) {
@@ -1191,6 +1187,7 @@ void CActor::ServerProcessInputs(float server_dt)
 				
 				CL->m_current_intent = cmd;
 				CL->m_last_processed_sequence = cmd.sequence;
+				CL->m_has_processed_input = true;
 			}
 			
 			// Restore the jump edge if any command in the collapse batch had it
@@ -1201,28 +1198,29 @@ void CActor::ServerProcessInputs(float server_dt)
 			}
 		}
 		
-		// Apply to Authoritative Actor state. 
-		// Physics single-step will naturally consume these via the standard g_Physics call at the bottom of UpdateCL().
-		mstate_real = CL->m_current_intent.mstate;
+		// Use the normal Actor control path so acceleration, crouch, sprint,
+		// jump restrictions and collision match the owning client's physics.
 		mstate_wishful = CL->m_current_intent.mstate;
 		unaffected_r_torso.yaw = CL->m_current_intent.yaw;
 		unaffected_r_torso.pitch = CL->m_current_intent.pitch;
-		
-		// Build NET_SavedAccel properly so the standard UpdateCL -> g_Physics uses it
-		NET_SavedAccel.set(0,0,0);
-		if (mstate_real & mcFwd) NET_SavedAccel.z += 1.0f;
-		if (mstate_real & mcBack) NET_SavedAccel.z -= 1.0f;
-		if (mstate_real & mcLStrafe) NET_SavedAccel.x -= 1.0f;
-		if (mstate_real & mcRStrafe) NET_SavedAccel.x += 1.0f;
-		if (NET_SavedAccel.magnitude() > 1.0f) NET_SavedAccel.normalize();
-		
-		extern float NET_Jump;
-		NET_Jump = (mstate_real & mcJump) ? m_fJumpSpeed : 0.0f;
-		
+		r_torso.yaw = unaffected_r_torso.yaw;
+		r_torso.pitch = unaffected_r_torso.pitch;
+		r_model_yaw = angle_normalize(r_torso.yaw);
+		cam_Active()->Set(-r_torso.yaw, r_torso.pitch, 0);
+		Fvector accel;
+		float jump = 0.0f;
+		g_cl_CheckControls(mstate_wishful, accel, jump, server_dt);
+		g_Orientate(mstate_real, server_dt);
+		g_Physics(accel, jump, server_dt);
+		g_cl_ValidateMState(server_dt, mstate_wishful);
+		g_SetAnimation(mstate_real);
+
 		// Clear the edge action so it doesn't repeat infinitely if no new packets arrive
 		CL->m_current_intent.mstate &= ~mcJump;
 		
-		// Send ACK back to the owning client
+		// The snapshot must follow the authoritative physics step.
+		if (!CL->m_has_processed_input)
+			return true;
 		NET_Packet P;
 		P.w_begin(M_CL_INPUT_ACK);
 		P.w_u32(CL->m_last_processed_sequence);
@@ -1235,20 +1233,11 @@ void CActor::ServerProcessInputs(float server_dt)
 		// Send Unreliable - NEWEST IS MOST IMPORTANT. Avoids head-of-line blocking for movement.
 		Level().Server->SendTo(CL->ID, P, net_flags(FALSE, TRUE));
 	}
+	return true;
 }
 
 void CActor::UpdateCL()
 {
-	// [M1] Record Client Prediction Frame
-	if (Local() && !OnServer()) {
-		ClientPredictionFrame frame;
-		frame.associated_sequence = m_next_input_sequence; // Map frame to current active sequence
-		frame.dt = Device.fTimeDelta;
-		frame.mstate = mstate_real;
-		
-		if (m_client_prediction_history.size() >= 512) m_client_prediction_history.pop_front();
-		m_client_prediction_history.push_back(frame);
-	}
 	if (g_Alive() && Level().CurrentViewEntity() == this)
 	{
 		if (CurrentGameUI() && (!CurrentGameUI()->TopInputReceiver() || (CurrentGameUI()->TopInputReceiver() && !CurrentGameUI()->TopInputReceiver()->StopAnyMove())) && !m_holder)
@@ -1291,10 +1280,6 @@ void CActor::UpdateCL()
 	inherited::UpdateCL();
 	m_pPhysics_support->in_UpdateCL();
 	
-	if (OnServer() && !IsGameTypeSingle()) {
-		ServerProcessInputs(Device.fTimeDelta); // Server authoritative physics step
-	}
-
 	pickup_result_t pickup_result = {true, false};
 	if (g_Alive())
 		pickup_result = PickupModeUpdate();
@@ -1939,12 +1924,15 @@ void CActor::shedule_Update(u32 DT)
 
 	clamp(DT, 0u, 100u);
 	float dt = float(DT) / 1000.f;
+	// Remote actors on the server consume one validated input state and take
+	// exactly one physics step here, including netcoop's single-player game type.
+	const bool authoritative_remote = OnServer() && ServerProcessInputs(dt);
 
 	// Check controls, create accel, prelimitary setup "mstate_real"
 
 	//----------- for E3 -----------------------------
 	//	if (Local() && (OnClient() || Level().CurrentEntity()==this))
-	if (Level().CurrentControlEntity() == this && !Level().IsDemoPlay())
+	if (!authoritative_remote && Level().CurrentControlEntity() == this && !Level().IsDemoPlay())
 		//------------------------------------------------
 	{
 		g_cl_CheckControls(mstate_wishful, NET_SavedAccel, NET_Jump, dt);
@@ -1964,6 +1952,17 @@ void CActor::shedule_Update(u32 DT)
 		g_Orientate(mstate_real, dt);
 
 		g_Physics(NET_SavedAccel, NET_Jump, dt);
+		if (Local() && !OnServer()) {
+			ClientPredictionFrame frame;
+			frame.associated_sequence = m_next_input_sequence;
+			frame.dt = dt;
+			frame.mstate = mstate_real;
+			frame.accel = NET_SavedAccel;
+			frame.jump = NET_Jump;
+			if (m_client_prediction_history.size() >= 512)
+				m_client_prediction_history.pop_front();
+			m_client_prediction_history.push_back(frame);
+		}
 
 		g_cl_ValidateMState(dt, mstate_wishful);
 		g_SetAnimation(mstate_real);
@@ -2023,7 +2022,7 @@ void CActor::shedule_Update(u32 DT)
 			}
 		}
 	}
-	else
+	else if (!authoritative_remote)
 	{
 		make_Interpolation();
 

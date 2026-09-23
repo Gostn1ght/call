@@ -39,6 +39,7 @@ public:
 	xr_deque<ActorInputCommand> m_pending_inputs;
 	u32 m_last_received_sequence;
 	u32 m_last_processed_sequence;
+	bool m_has_processed_input;
 	ActorInputCommand m_current_intent;
 	u32 m_last_input_receive_time;
 
@@ -64,6 +65,7 @@ public:
 	s32 m_last_key_sync_request_seed;
 
 	xrClientData();
+	void ClearInputState();
 	virtual ~xrClientData();
 	virtual void Clear();
 };

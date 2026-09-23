@@ -96,12 +96,17 @@ void CActor::net_ExportInput(NET_Packet& P, const ActorInputCommand& cmd)
 
 void CActor::net_ImportInputAck(NET_Packet& P)
 {
+	if (P.B.count - P.r_tell() < sizeof(u32) + 2 * sizeof(Fvector))
+		return;
 	u32 ack_seq;
 	Fvector auth_pos;
 	Fvector auth_vel;
 	P.r_u32(ack_seq);
 	P.r_vec3(auth_pos);
 	P.r_vec3(auth_vel);
+	if (!_valid(auth_pos) || !_valid(auth_vel) ||
+		!is_sequence_newer_or_equal(m_next_input_sequence - 1, ack_seq))
+		return;
 	
 	// STRICTLY NEWER ACK Sequence Validation (Drop reordered/delayed/duplicate ACKs)
 	if (!is_sequence_newer(ack_seq, m_last_applied_server_ack)) return;
@@ -134,6 +139,7 @@ void CActor::net_ImportInputAck(NET_Packet& P)
 		character_physics_support()->movement()->SetPosition(auth_pos);
 		character_physics_support()->movement()->SetVelocity(auth_vel);
 	}
+	Position().set(auth_pos);
 	
 	// Replay
 	ReplayPendingInputs();
@@ -363,6 +369,10 @@ void CActor::net_ExportDeadBody(NET_Packet& P)
 
 void CActor::net_Import(NET_Packet& P) // import from server
 {
+	// Client M_CL_UPDATE is legacy gameplay data, never an authoritative
+	// movement source for a server Actor (which is marked Local at spawn).
+	if (OnServer() && Level().Server)
+		return;
 	//-----------------------------------------------
 	net_Import_Base(P);
 	//-----------------------------------------------

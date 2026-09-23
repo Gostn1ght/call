@@ -651,7 +651,8 @@ bool CActor::CanMove()
 	{
 		if (mstate_wishful & mcAnyMove)
 		{
-			CurrentGameUI()->AddCustomStatic("cant_walk", true);
+			if (!g_dedicated_server && CurrentGameUI())
+				CurrentGameUI()->AddCustomStatic("cant_walk", true);
 		}
 		return false;
 	}
@@ -659,7 +660,8 @@ bool CActor::CanMove()
 	{
 		if (mstate_wishful & mcAnyMove)
 		{
-			CurrentGameUI()->AddCustomStatic("cant_walk_weight", true);
+			if (!g_dedicated_server && CurrentGameUI())
+				CurrentGameUI()->AddCustomStatic("cant_walk_weight", true);
 		}
 		return false;
 	}

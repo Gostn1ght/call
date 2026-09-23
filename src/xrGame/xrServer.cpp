@@ -43,6 +43,7 @@ xrClientData::xrClientData() :
 void xrClientData::Clear()
 {
 	owner = NULL;
+	ClearInputState();
 	net_Ready = FALSE;
 	net_Accepted = FALSE;
 	gamma_snapshot_ready = false;
@@ -50,6 +51,16 @@ void xrClientData::Clear()
 	m_ping_warn.m_maxPingWarnings = 0;
 	m_ping_warn.m_dwLastMaxPingWarningTime = 0;
 	m_admin_rights.m_has_admin_rights = FALSE;
+};
+
+void xrClientData::ClearInputState()
+{
+	m_pending_inputs.clear();
+	m_last_received_sequence = 0;
+	m_last_processed_sequence = 0;
+	m_has_processed_input = false;
+	m_current_intent = {};
+	m_last_input_receive_time = 0;
 };
 
 
@@ -145,7 +156,7 @@ u32 g_sv_Client_Reconnect_Time = 3;
 void xrServer::client_Destroy(IClient* C)
 {
 	xrClientData* CL = (xrClientData*)C;
-	CL->m_pending_inputs.clear(); // Disconnect cleanup
+	CL->ClearInputState(); // Disconnect cleanup
 	// Delete assosiated entity
 	// xrClientData*	D = (xrClientData*)C;
 	// CSE_Abstract* E = D->owner;
@@ -538,8 +549,8 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 	{
 	case M_CL_INPUT:
 	{
-		if (!CL || !CL->owner) break; // Ownership validation: sender must control an entity
-		if (P.B.count - P.r_tell() < M_CL_INPUT_WIRE_SIZE) break; // ABI-independent Bounds check
+		if (!CL || !CL->owner || !smart_cast<CSE_ALifeCreatureActor*>(CL->owner)) break;
+		if (P.B.count - P.r_tell() != M_CL_INPUT_WIRE_SIZE) break;
 		
 		ActorInputCommand cmd;
 		P.r_u32(cmd.sequence);

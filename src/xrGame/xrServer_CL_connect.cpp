@@ -36,6 +36,8 @@ void xrServer::Perform_connect_spawn(CSE_Abstract* E, xrClientData* CL, NET_Pack
 		// PROCESS NAME; Name this entity
 		if (E->s_flags.is(M_SPAWN_OBJECT_ASPLAYER))
 		{
+			if (CL->owner != E)
+				CL->ClearInputState();
 			CL->owner = E;
 			if (CL->ps) E->set_name_replace(CL->ps->getName()); //netcoop: player state may not exist yet
 		}

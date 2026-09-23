@@ -244,19 +244,6 @@ void CLevel::ClientReceive()
 			}
 			break;
 			//------------------------------------------------
-		case M_CL_INPUT:
-			{
-				/*if (!game_configured)
-				{
-					Msg("! WARNING: ignoring game event [%d] - game not configured...", m_type);
-					break;
-				}*/
-				P->r_u16(ID);
-				CObject* O = Objects.net_Find(ID);
-				if (0 == O) break;
-				O->net_ImportInput(*P);
-			}
-			break;
 			//---------------------------------------------------
 		case M_SV_CONFIG_NEW_CLIENT:
 			InitializeClientGame(*P);

@@ -118,6 +118,8 @@ CSE_Abstract* xrServer::Process_spawn(NET_Packet& P, ClientID sender, BOOL bSpaw
 	// PROCESS NAME; Name this entity
 	if (CL && (E->s_flags.is(M_SPAWN_OBJECT_ASPLAYER)))
 	{
+		if (CL->owner != E)
+			CL->ClearInputState();
 		CL->owner = E;
 		//		E->set_name_replace	(CL->Name);
 	}
