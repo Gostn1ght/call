@@ -526,12 +526,6 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
     {
         switch (type)
         {
-        case M_CL_INPUT:
-	{
-		// Basic validation & ownership check handled via Sender ClientID -> Actor
-		CSE_Abstract* e = entity_Create("actor"); // Stub logic for routing
-	}
-	break;
 	case M_UPDATE: case M_SPAWN: case M_SAVE_GAME: case M_SAVE_PACKET:
         case M_LOAD_GAME: case M_RELOAD_GAME: case M_CHANGE_LEVEL:
         case M_CHANGE_LEVEL_GAME: case M_SWITCH_DISTANCE:
@@ -561,7 +555,7 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		clamp(cmd.pitch, -PI_DIV_2, PI_DIV_2);
 		
 		// Symbolic MState flags
-		const u16 ALLOWED_MSTATE_FLAGS = mcFwd | mcBack | mcLStrafe | mcRStrafe | mcCrouch | mcAccel | mcJump | mcSprint | mcLLookout | mcRLookout;
+		const u16 ALLOWED_MSTATE_FLAGS = ACTOR_DEFS::mcFwd | ACTOR_DEFS::mcBack | ACTOR_DEFS::mcLStrafe | ACTOR_DEFS::mcRStrafe | ACTOR_DEFS::mcCrouch | ACTOR_DEFS::mcAccel | ACTOR_DEFS::mcJump | ACTOR_DEFS::mcSprint | ACTOR_DEFS::mcLLookout | ACTOR_DEFS::mcRLookout;
 		if (cmd.mstate & ~ALLOWED_MSTATE_FLAGS) break;
 		
 		// Sequence logic
@@ -649,20 +643,6 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		}
 		break;
 		//-------------------------------------------------------------------
-	case M_CL_INPUT:
-        {
-            if (!CL->owner || P.B.count < 4) break;
-            u16 object_id;
-            CopyMemory(&object_id, P.B.data + 2, sizeof(object_id));
-            if (object_id != CL->owner->ID) break;
-			xrClientData* CL = ID_to_client(sender);
-			if (CL) CL->net_Ready = TRUE;
-			if (SV_Client) SendTo(SV_Client->ID, P, net_flags(TRUE, TRUE));
-#ifdef DEBUG
-			VERIFY(verify_entities());
-#endif
-		}
-		break;
 	case M_GAMEMESSAGE:
 		{
 			SendBroadcast(BroadcastCID, P, net_flags(TRUE,TRUE));

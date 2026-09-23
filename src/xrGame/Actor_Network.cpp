@@ -147,8 +147,8 @@ void CActor::net_Export(NET_Packet& P) // export to server
 		ActorInputCommand cmd;
 		cmd.sequence = m_next_input_sequence++;
 		cmd.mstate = mstate_real;
-		cmd.yaw = yaw;
-		cmd.pitch = pitch;
+		cmd.yaw = unaffected_r_torso.yaw;
+		cmd.pitch = unaffected_r_torso.pitch;
 		
 		// Buffer Overflow Policy: Stop prediction until next ACK, drop oldest.
 		if (m_client_pending_inputs.size() >= 64) {
