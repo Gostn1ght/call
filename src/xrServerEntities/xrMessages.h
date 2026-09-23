@@ -54,7 +54,6 @@ enum
 	M_EVENT,
 	// Game Event
 	M_CL_INPUT,
-	M_CL_INPUT_ACK,
 	// Client Input Data
 	//----------- for E3 -----------------------------
 	M_CL_UPDATE,
@@ -121,8 +120,11 @@ enum
 
 	M_NETANOMALY_CMD,
 	M_NETANOMALY_MSG,
+	M_CL_INPUT_ACK, // appended to preserve existing message IDs
 	MSG_FORCEDWORD = u32(-1)
 };
+static_assert(M_CL_INPUT == 9 && M_CL_UPDATE == 10 && M_CL_INPUT_ACK == 53,
+	"Movement message IDs are part of the network protocol");
 
 enum
 {

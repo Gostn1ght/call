@@ -560,6 +560,9 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		
 		// Finite validation
 		if (!_valid(cmd.yaw) || !_valid(cmd.pitch)) break;
+		// angle_normalize_signed converts whole turns through a 32-bit integer.
+		// Bound finite values before normalization to reject extreme input.
+		if (_abs(cmd.yaw) > PI_MUL_2 * 4 || _abs(cmd.pitch) > PI_MUL_2 * 2) break;
 		// Yaw/Pitch Limits
 		cmd.yaw = angle_normalize_signed(cmd.yaw);
 		cmd.pitch = angle_normalize_signed(cmd.pitch);

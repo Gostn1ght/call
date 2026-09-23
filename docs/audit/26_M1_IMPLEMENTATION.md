@@ -2,7 +2,7 @@
 
 ## Server path
 
-`xrServer::OnMessage(M_CL_INPUT)` finds the sender's `xrClientData`, checks that its owner is an Actor server entity, validates the fixed input payload and sequence, and enqueues at most 64 commands. `xrClientData::Clear` resets input, sequence and stale-time state; `client_Destroy` clears the queue. A 500 ms interval without input neutralizes continuous movement intent. The timeout is a tuning value.
+`xrServer::OnMessage(M_CL_INPUT)` finds the sender's `xrClientData`, checks that its owner is an Actor server entity, validates the fixed input payload and sequence, and enqueues at most 64 commands. `xrClientData::ClearInputState` resets input, sequence and stale-time state at initialization, owner reassignment and disconnect. A 500 ms interval without input neutralizes continuous movement intent. The timeout is a tuning value.
 
 The server-side `CActor::shedule_Update` uses the server's clamped schedule delta. For an Actor owned by a remote connection, it collapses queued intent to the newest state while retaining a jump edge, calls the ordinary Actor controls, orientation, and physics once, then sends an authoritative position/velocity ACK. This path includes netcoop despite its single-player game type. Host-local Actors keep their existing control path. Packet count does not add physics steps.
 
