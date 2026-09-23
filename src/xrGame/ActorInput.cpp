@@ -104,6 +104,8 @@ void CActor::IR_OnKeyboardPress(int cmd)
 	case kJUMP:
 		{
 			mstate_wishful |= mcJump;
+			if (Local() && !OnServer())
+				m_jump_input_pending = true;
 		}
 		break;
 	case kSPRINT_TOGGLE:

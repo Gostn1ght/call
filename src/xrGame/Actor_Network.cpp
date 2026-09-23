@@ -153,6 +153,8 @@ void CActor::net_Export(NET_Packet& P) // export to server
 		ActorInputCommand cmd;
 		cmd.sequence = m_next_input_sequence++;
 		cmd.mstate = mstate_real;
+		if (m_jump_input_pending)
+			cmd.mstate |= mcJump;
 		cmd.yaw = unaffected_r_torso.yaw;
 		cmd.pitch = unaffected_r_torso.pitch;
 		
@@ -165,6 +167,7 @@ void CActor::net_Export(NET_Packet& P) // export to server
 		NET_Packet PInput;
 		net_ExportInput(PInput, cmd); // Wire format writer (omits client_dt)
 		Level().Send(PInput, net_flags(TRUE, TRUE)); // Reliable input transport
+		m_jump_input_pending = false;
 	}
 
 	//CSE_ALifeCreatureAbstract

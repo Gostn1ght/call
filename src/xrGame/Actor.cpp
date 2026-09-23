@@ -1128,6 +1128,7 @@ float CActor::currentFOV()
 void CActor::ResetPredictionState()
 {
 	m_next_input_sequence = 1;
+	m_jump_input_pending = false;
 	m_last_applied_server_ack = 0;
 	m_client_pending_inputs.clear();
 	m_client_prediction_history.clear();

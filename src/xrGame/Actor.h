@@ -580,6 +580,7 @@ public:
 	void net_ImportInputAck(NET_Packet& P);
 	
 	u32 m_next_input_sequence = 1;
+	bool m_jump_input_pending = false;
 	struct ClientPredictionFrame {
 		u32 associated_sequence;
 		float dt;
