@@ -1041,7 +1041,7 @@ void CActor::g_Physics(Fvector& _accel, float jump, float dt)
 			accel.set(0.f, 0.f, 0.f);
 		character_physics_support()->movement()->Calculate(accel, cameras[cam_active]->vDirection, 0, jump, dt, false);
 		bool new_border_state = character_physics_support()->movement()->isOutBorder();
-		if (m_bOutBorder != new_border_state && Level().CurrentControlEntity() == this)
+		if (!m_bReplayMode && m_bOutBorder != new_border_state && Level().CurrentControlEntity() == this)
 		{
 			SwitchOutBorder(new_border_state);
 		}
@@ -1139,6 +1139,7 @@ void CActor::ResetPredictionState()
 void CActor::ReplayPendingInputs()
 {
 	m_bReplayMode = true;
+	const float saved_hit_slowmo = m_hit_slowmo;
 	
 	const u32 saved_state = mstate_real;
 	for (const auto& frame : m_client_prediction_history) {
@@ -1147,6 +1148,7 @@ void CActor::ReplayPendingInputs()
 		g_Physics(accel, frame.jump, frame.dt);
 	}
 	mstate_real = saved_state;
+	m_hit_slowmo = saved_hit_slowmo;
 	
 	m_bReplayMode = false;
 }

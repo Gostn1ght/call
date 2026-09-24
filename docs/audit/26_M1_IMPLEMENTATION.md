@@ -10,7 +10,7 @@ The server-side `CActor::shedule_Update` uses the server's clamped schedule delt
 
 ## Owner path
 
-`CActor::net_Export` samples movement state and camera yaw/pitch, assigns a wrap-safe sequence and sends `M_CL_INPUT`. A jump key press is latched until the next input packet so a tap between network sends is represented. The local Actor continues to simulate immediately. Prediction history is recorded beside the actual physics call in `shedule_Update`, with local dt, movement state, computed world-space acceleration and jump impulse. On a valid newer ACK, the client restores position and velocity, removes acknowledged entries and replays remaining physics frames without sending new packets. Replay suppresses collision camera effects and collision event side effects in `g_Physics`.
+`CActor::net_Export` samples movement state and camera yaw/pitch, assigns a wrap-safe sequence and sends `M_CL_INPUT`. A jump key press is latched until the next input packet so a tap between network sends is represented. The local Actor continues to simulate immediately. Prediction history is recorded beside the actual physics call in `shedule_Update`, with local dt, movement state, computed world-space acceleration and jump impulse. On a valid newer ACK, the client restores position and velocity, removes acknowledged entries and replays remaining physics frames without sending new packets. Replay suppresses collision camera effects, collision events and level-border callbacks, and restores local hit slow-motion timing after replay.
 
 ## Remote path and limitations
 
