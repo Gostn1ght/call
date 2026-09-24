@@ -270,6 +270,9 @@ void CConsole::OnScreenResolutionChanged()
 
 void CConsole::OnRender()
 {
+	if (g_dedicated_server)
+		return;
+
 	if (!bVisible)
 	{
 		return;
@@ -688,7 +691,8 @@ void CConsole::Show()
 	update_tips();
 
 	m_editor->IR_Capture();
-	Device.seqRender.Add(this, 1);
+	if (!g_dedicated_server)
+		Device.seqRender.Add(this, 1);
 	Device.seqFrame.Add(this);
 
 	//SECUROM_MARKER_HIGH_SECURITY_OFF(11)
