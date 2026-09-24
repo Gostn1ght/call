@@ -362,7 +362,9 @@ float CVisualMemoryManager::get_visible_value(const CGameObject* game_object, fl
 
 	//Alundaio: hijack not_yet_visible_object to lua
 	::luabind::functor<float> funct;
-	if (ai().script_engine().functor("visual_memory_manager.get_visible_value", funct))
+	// GAMMA's hook reads db.actor; a joining client can update remote AI
+	// before its own Actor has spawned and the script binding exists.
+	if (g_actor && ai().script_engine().functor("visual_memory_manager.get_visible_value", funct))
 		return (funct(m_object ? m_object->lua_game_object() : 0, game_object ? game_object->lua_game_object() : 0,
 		              time_delta, current_state().m_time_quant, luminocity, current_state().m_velocity_factor,
 		              object_velocity, distance, object_distance, always_visible_distance)) * g_ai_vision_speed_boost * m_vision_speed;
