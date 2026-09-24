@@ -660,7 +660,7 @@ int __cdecl CScriptStorage::script_log(ScriptStorage::ELuaMessageType tLuaMessag
 	{
 		reenterability = true;
 		if (tLuaMessageType == ScriptStorage::eLuaMessageTypeError)
-			print_stack();
+			ai().script_engine().print_stack();
 		reenterability = false;
 	}
 
