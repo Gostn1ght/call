@@ -196,6 +196,7 @@ float CActorCondition::GetZoneMaxPower(ALife::EHitType hit_type) const
 void CActorCondition::UpdateCondition()
 {
 	float v_alcohol = IsSleeping() ? m_fV_AlcoholSleep : m_fV_Alcohol;
+	const bool local_view_actor = !g_dedicated_server && m_object == g_actor;
 	
 	if (psActorFlags.test(AF_GODMODE_RT))
 	{
@@ -204,7 +205,7 @@ void CActorCondition::UpdateCondition()
 
 		m_fAlcohol += v_alcohol * m_fDeltaTime;
 		clamp(m_fAlcohol, 0.0f, 1.0f);
-		if (IsGameTypeSingle())
+		if (IsGameTypeSingle() && local_view_actor)
 		{
 			CEffectorCam* ce = Actor()->Cameras().GetCamEffector((ECamEffectorType)effAlcohol);
 			if (ce)
@@ -251,7 +252,7 @@ void CActorCondition::UpdateCondition()
 	m_fAlcohol += v_alcohol * m_fDeltaTime;
 	clamp(m_fAlcohol, 0.0f, 1.0f);
 
-	if (IsGameTypeSingle())
+	if (IsGameTypeSingle() && local_view_actor)
 	{
 		CEffectorCam* ce = Actor()->Cameras().GetCamEffector((ECamEffectorType)effAlcohol);
 		if ((m_fAlcohol > 0.0001f))
@@ -302,10 +303,10 @@ void CActorCondition::UpdateCondition()
 
 	inherited::UpdateCondition();
 
-	if (IsGameTypeSingle())
+	if (IsGameTypeSingle() && local_view_actor)
 		UpdateTutorialThresholds();
 
-	if (GetHealth() < 0.05f && m_death_effector == NULL && IsGameTypeSingle())
+	if (GetHealth() < 0.05f && m_death_effector == NULL && IsGameTypeSingle() && local_view_actor)
 	{
 		if (pSettings->section_exist("actor_death_effector"))
 			m_death_effector = xr_new<CActorDeathEffector>(this, "actor_death_effector");
