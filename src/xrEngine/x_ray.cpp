@@ -1595,13 +1595,13 @@ PROTECT_API void CApplication::LoadDraw()
 	if (g_appLoaded) return;
 	Device.dwFrame += 1;
 
+	// A dedicated server has no loading UI shader to draw. Keep its frame
+	// counter advancing, but leave the loading screen to graphical clients.
+	if (g_dedicated_server) return;
 
 	if (!Device.Begin()) return;
 
-	if (g_dedicated_server)
-		Console->OnRender();
-	else
-		load_draw_internal();
+	load_draw_internal();
 
 	Device.End();
 }
