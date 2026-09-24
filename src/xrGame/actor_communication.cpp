@@ -149,8 +149,11 @@ void CActor::NewPdaContact(CInventoryOwner* pInvOwner)
 {
 	if (!IsGameTypeSingle()) return;
 
-	bool b_alive = !!(smart_cast<CEntityAlive*>(pInvOwner))->g_Alive();
-	CurrentGameUI()->UIMainIngameWnd->AnimateContacts(b_alive);
+	if (!g_dedicated_server)
+	{
+		bool b_alive = !!(smart_cast<CEntityAlive*>(pInvOwner))->g_Alive();
+		CurrentGameUI()->UIMainIngameWnd->AnimateContacts(b_alive);
+	}
 
 	Level().MapManager().AddRelationLocation(pInvOwner);
 }
