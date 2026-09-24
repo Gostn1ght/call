@@ -186,6 +186,11 @@ void CUIRankingWnd::add_achievement(CUIXml& xml, shared_str const& achiev_id)
 
 void CUIRankingWnd::update_info()
 {
+	// Co-op clients have no local ALife simulator; GAMMA ranking scripts
+	// query alife() while the HUD can update before the player spawns.
+	if (!ai().get_alife())
+		return;
+
 	ACHIEVES_VEC_IT b = m_achieves_vec.begin(), e = m_achieves_vec.end();
 	for (; b != e; b++)
 		(*b)->Update();
