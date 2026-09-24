@@ -59,6 +59,7 @@ void xrClientData::ClearInputState()
 	m_last_received_sequence = 0;
 	m_last_processed_sequence = 0;
 	m_has_processed_input = false;
+	m_pending_jump_edge = false;
 	m_current_intent = {};
 	m_last_input_receive_time = 0;
 };
@@ -576,6 +577,8 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		    is_sequence_in_forward_window(cmd.sequence, CL->m_last_received_sequence)) {
 			CL->m_last_received_sequence = cmd.sequence;
 			CL->m_last_input_receive_time = Device.dwTimeGlobal;
+			if (cmd.mstate & ACTOR_DEFS::mcJump)
+				CL->m_pending_jump_edge = true;
 			if (CL->m_pending_inputs.size() >= 64) {
 				CL->m_pending_inputs.pop_front(); // DROP OLDEST to avoid infinite lag
 			}

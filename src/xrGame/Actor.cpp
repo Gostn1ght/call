@@ -1180,13 +1180,12 @@ bool CActor::ServerProcessInputs(float server_dt)
 			CL->m_current_intent.mstate = 0;
 		}
 		
-		bool accumulated_jump = false;
+		const bool accumulated_jump = CL->m_pending_jump_edge;
+		CL->m_pending_jump_edge = false;
 		if (CL->m_pending_inputs.size() > 0) {
 			while (!CL->m_pending_inputs.empty()) {
 				ActorInputCommand cmd = CL->m_pending_inputs.front();
 				CL->m_pending_inputs.pop_front();
-				
-				if (cmd.mstate & mcJump) accumulated_jump = true; // symbolic edge state
 				
 				CL->m_current_intent = cmd;
 				CL->m_last_processed_sequence = cmd.sequence;

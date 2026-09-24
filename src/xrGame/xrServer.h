@@ -40,6 +40,7 @@ public:
 	u32 m_last_received_sequence;
 	u32 m_last_processed_sequence;
 	bool m_has_processed_input;
+	bool m_pending_jump_edge;
 	ActorInputCommand m_current_intent;
 	u32 m_last_input_receive_time;
 
