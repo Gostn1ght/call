@@ -96,7 +96,7 @@ void CActor::net_ExportInput(NET_Packet& P, const ActorInputCommand& cmd)
 
 void CActor::net_ImportInputAck(NET_Packet& P)
 {
-	if (P.B.count - P.r_tell() < sizeof(u32) + 2 * sizeof(Fvector))
+	if (P.B.count - P.r_tell() != sizeof(u32) + 2 * sizeof(Fvector))
 		return;
 	u32 ack_seq;
 	Fvector auth_pos;
@@ -152,7 +152,7 @@ void CActor::net_Export(NET_Packet& P) // export to server
 		// Client Sampling and Send
 		ActorInputCommand cmd;
 		cmd.sequence = m_next_input_sequence++;
-		cmd.mstate = mstate_real;
+		cmd.mstate = mstate_real & kM1InputIntentFlags;
 		if (m_jump_input_pending)
 			cmd.mstate |= mcJump;
 		cmd.yaw = unaffected_r_torso.yaw;

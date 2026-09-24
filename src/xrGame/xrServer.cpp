@@ -569,8 +569,7 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 		clamp(cmd.pitch, -PI_DIV_2, PI_DIV_2);
 		
 		// Symbolic MState flags
-		const u16 ALLOWED_MSTATE_FLAGS = ACTOR_DEFS::mcFwd | ACTOR_DEFS::mcBack | ACTOR_DEFS::mcLStrafe | ACTOR_DEFS::mcRStrafe | ACTOR_DEFS::mcCrouch | ACTOR_DEFS::mcAccel | ACTOR_DEFS::mcJump | ACTOR_DEFS::mcSprint | ACTOR_DEFS::mcLLookout | ACTOR_DEFS::mcRLookout;
-		if (cmd.mstate & ~ALLOWED_MSTATE_FLAGS) break;
+		if (cmd.mstate & ~ACTOR_DEFS::kM1InputIntentFlags) break;
 		
 		// Sequence logic
 		if (is_sequence_newer(cmd.sequence, CL->m_last_received_sequence) && 

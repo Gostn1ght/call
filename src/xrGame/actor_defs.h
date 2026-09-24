@@ -50,6 +50,9 @@ namespace ACTOR_DEFS
 		mcAnyState = (mcCrouch | mcAccel | mcClimb | mcSprint),
 		mcLookout = (mcLLookout | mcRLookout),
 	};
+	// Network input carries player intent, never physics-derived states such as falling.
+	constexpr u16 kM1InputIntentFlags = mcFwd | mcBack | mcLStrafe | mcRStrafe |
+		mcCrouch | mcAccel | mcJump | mcSprint | mcLLookout | mcRLookout;
 
 	// enum для определения действия над вещью на которую наведен в текущее время прицел.
 	// Используется для показа всплывающих динамических подсказок
