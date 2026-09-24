@@ -1769,15 +1769,19 @@ bool CLevel::IsClient()
 
 void CLevel::OnAlifeSimulatorUnLoaded()
 {
-	MapManager().ResetStorage();
-	GameTaskManager().ResetStorage();
+	if (m_map_manager)
+		m_map_manager->ResetStorage();
+	if (m_game_task_manager)
+		m_game_task_manager->ResetStorage();
 	delete_data(m_debug_render_queue);
 }
 
 void CLevel::OnAlifeSimulatorLoaded()
 {
-	MapManager().ResetStorage();
-	GameTaskManager().ResetStorage();
+	if (m_map_manager)
+		m_map_manager->ResetStorage();
+	if (m_game_task_manager)
+		m_game_task_manager->ResetStorage();
 	delete_data(m_debug_render_queue);
 }
 

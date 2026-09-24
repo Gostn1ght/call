@@ -48,56 +48,64 @@ CFontManager& mngr()
 	return UI().Font();
 }
 
+CGameFont* ui_font(CGameFont* CFontManager::*font)
+{
+	// Gameplay Lua can load UI modules on a dedicated server, which has no UI fonts.
+	if (g_dedicated_server)
+		return nullptr;
+	return mngr().*font;
+}
+
 // hud font
 CGameFont* GetFontSmall()
 {
-	return mngr().pFontStat;
+	return ui_font(&CFontManager::pFontStat);
 }
 
 CGameFont* GetFontMedium()
 {
-	return mngr().pFontMedium;
+	return ui_font(&CFontManager::pFontMedium);
 }
 
 CGameFont* GetFontDI()
 {
-	return mngr().pFontDI;
+	return ui_font(&CFontManager::pFontDI);
 }
 
 //шрифты для интерфейса
 CGameFont* GetFontGraffiti19Russian()
 {
-	return mngr().pFontGraffiti19Russian;
+	return ui_font(&CFontManager::pFontGraffiti19Russian);
 }
 
 CGameFont* GetFontGraffiti22Russian()
 {
-	return mngr().pFontGraffiti22Russian;
+	return ui_font(&CFontManager::pFontGraffiti22Russian);
 }
 
 CGameFont* GetFontLetterica16Russian()
 {
-	return mngr().pFontLetterica16Russian;
+	return ui_font(&CFontManager::pFontLetterica16Russian);
 }
 
 CGameFont* GetFontLetterica18Russian()
 {
-	return mngr().pFontLetterica18Russian;
+	return ui_font(&CFontManager::pFontLetterica18Russian);
 }
 
 CGameFont* GetFontGraffiti32Russian()
 {
-	return mngr().pFontGraffiti32Russian;
+	return ui_font(&CFontManager::pFontGraffiti32Russian);
 }
 
 CGameFont* GetFontGraffiti50Russian()
 {
-	return mngr().pFontGraffiti50Russian;
+	return ui_font(&CFontManager::pFontGraffiti50Russian);
 }
 
 CGameFont* GetFontLetterica25()
 {
-	return mngr().pFontLetterica25;
+	return ui_font(&CFontManager::pFontLetterica25);
 }
 
 
