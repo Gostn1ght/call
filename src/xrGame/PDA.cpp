@@ -106,7 +106,7 @@ void CPda::OnStateSwitch(u32 S, u32 oldState)
 {
 	inherited::OnStateSwitch(S, oldState);
 
-	if (!ParentIsActor())
+	if (g_dedicated_server || !ParentIsActor())
 		return;
 
 	switch (S)
@@ -521,7 +521,7 @@ void CPda::OnMoveToRuck(const SInvItemPlace& prev)
 {
 	inherited::OnMoveToRuck(prev);
 
-	if (!ParentIsActor())
+	if (g_dedicated_server || !ParentIsActor())
 		return;
 
 	if (prev.type == eItemPlaceSlot)
@@ -1016,7 +1016,7 @@ void CPda::OnH_B_Independent(bool just_before_destroy)
 	inherited::OnH_B_Independent(just_before_destroy);
 	TurnOff();
 
-	if (!ParentIsActor() || !g_player_hud->attached_item(0))
+	if (g_dedicated_server || !ParentIsActor() || !g_player_hud->attached_item(0))
 		return;
 
 	if (g_player_hud->attached_item(0)->m_parent_hud_item != this)

@@ -242,9 +242,9 @@ CLevel::CLevel() :
     eEnvironment = Engine.Event.Handler_Attach("LEVEL:Environment", this);
     eEntitySpawn = Engine.Event.Handler_Attach("LEVEL:spawn", this);
     m_pBulletManager = xr_new<CBulletManager>();
+    m_map_manager = xr_new<CMapManager>();
     if (!g_dedicated_server)
     {
-        m_map_manager = xr_new<CMapManager>();
         m_game_task_manager = xr_new<CGameTaskManager>();
     }
     m_dwDeltaUpdate = u32(fixed_step * 1000);
