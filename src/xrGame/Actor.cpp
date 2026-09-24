@@ -1280,6 +1280,14 @@ void CActor::UpdateCL()
 
 	inherited::UpdateCL();
 	m_pPhysics_support->in_UpdateCL();
+	if (g_dedicated_server)
+	{
+		// Movement is stepped once in shedule_Update; the remaining work here
+		// drives pickup UI, HUD cameras, shaders and client presence.
+		UpdateDefferedMessages();
+		spatial.type |= STYPE_REACTTOSOUND;
+		return;
+	}
 	
 	pickup_result_t pickup_result = {true, false};
 	if (g_Alive())
