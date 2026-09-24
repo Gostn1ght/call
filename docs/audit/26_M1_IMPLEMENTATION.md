@@ -14,6 +14,6 @@ The server-side `CActor::shedule_Update` uses the server's clamped schedule delt
 
 ## Remote path and limitations
 
-Other clients use the existing `NET`/`NET_A`, `net_Import` and `make_Interpolation` pipeline for server entity updates. This flow, its update cadence, and the server's `CGameObject` Actor proxy on a dedicated server require runtime observation. The snapshot does not include the full character physics state. Sequence-to-frame association is based on the next unsent input sequence; timing at the send/physics boundary requires a two-client test under latency and loss. `g_cl_CheckControls` invokes gameplay and Lua callbacks on the server; headless safety must be verified at runtime.
+Other clients use the existing `NET`/`NET_A`, `net_Import` and `make_Interpolation` pipeline for server entity updates. This flow, its update cadence, and the server's `CGameObject` Actor proxy on a dedicated server require runtime observation. The server movement step does not call visual animation setup; remote clients animate from replicated state. The snapshot does not include the full character physics state. Sequence-to-frame association is based on the next unsent input sequence; timing at the send/physics boundary requires a two-client test under latency and loss. `g_cl_CheckControls` invokes gameplay and Lua callbacks on the server; headless safety must be verified at runtime.
 
 M2 shooting and damage authority is outside this milestone.

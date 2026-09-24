@@ -1214,7 +1214,6 @@ bool CActor::ServerProcessInputs(float server_dt)
 		g_Orientate(mstate_real, server_dt);
 		g_Physics(accel, jump, server_dt);
 		g_cl_ValidateMState(server_dt, mstate_wishful);
-		g_SetAnimation(mstate_real);
 
 		// Clear the edge action so it doesn't repeat infinitely if no new packets arrive
 		CL->m_current_intent.mstate &= ~mcJump;
