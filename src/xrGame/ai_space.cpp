@@ -43,9 +43,6 @@ CAI_Space::CAI_Space()
 
 void CAI_Space::init()
 {
-	if (g_dedicated_server)
-		return;
-
 #ifndef NO_SINGLE
 	VERIFY(!m_ef_storage);
 	m_ef_storage = xr_new<CEF_Storage>();
@@ -144,10 +141,8 @@ void CAI_Space::load(LPCSTR level_name)
 
 void CAI_Space::unload(bool reload)
 {
-	if (g_dedicated_server)
-		return;
-
-	script_engine().unload();
+	if (m_script_engine)
+		script_engine().unload();
 
 	xr_delete(m_doors_manager);
 	xr_delete(m_graph_engine);
