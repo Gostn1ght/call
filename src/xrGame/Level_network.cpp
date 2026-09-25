@@ -453,6 +453,7 @@ void CLevel::OnBuildVersionChallenge()
 void CLevel::OnConnectResult(NET_Packet* P)
 {
 	// multiple results can be sent during connection they should be "AND-ed"
+	const bool first_result = !m_bConnectResultReceived;
 	m_bConnectResultReceived = true;
 	u8 result = P->r_u8();
 	u8 res1 = P->r_u8();
@@ -461,6 +462,10 @@ void CLevel::OnConnectResult(NET_Packet* P)
 	ClientID tmp_client_id;
 	P->r_clientID(tmp_client_id);
 	SetClientID(tmp_client_id);
+	// The netcoop server skips the digest challenge for remote clients.
+	// That challenge normally triggers profile creation, so send it here.
+	if (result && first_result && strstr(Core.Params, "-netcoop") && !Server)
+		ClientSendProfileData();
 	if (!result)
 	{
 		m_bConnectResult = false;

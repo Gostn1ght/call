@@ -831,7 +831,10 @@ void game_sv_GameState::OnEvent(NET_Packet& tNetPacket, u16 type, u32 time, Clie
 			if (g_dedicated_server && (CL == m_server->GetServerClient()))
 				break;
 
-			CheckNewPlayer(CL);
+			if (!CheckNewPlayer(CL))
+				break;
+			if (CL->net_ConnectionDataRequested && !CL->net_Accepted)
+				m_server->OnCL_Connected(CL);
 		}
 		break;
 	default:

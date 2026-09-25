@@ -99,6 +99,11 @@ void xrServer::SendConnectionData(IClient* _CL)
 void xrServer::OnCL_Connected(IClient* _CL)
 {
 	xrClientData* CL = (xrClientData*)_CL;
+	if (!CL->ps)
+	{
+		Msg("[NetAnomaly] waiting for player state before connection data for 0x%08x", CL->ID.value());
+		return;
+	}
 	CL->net_Accepted = TRUE;
 	if (strstr(Core.Params, "-netcoop"))
 	{

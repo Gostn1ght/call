@@ -47,6 +47,7 @@ void xrClientData::Clear()
 	ClearInputState();
 	net_Ready = FALSE;
 	net_Accepted = FALSE;
+	net_ConnectionDataRequested = FALSE;
 	gamma_snapshot_ready = false;
 	net_PassUpdates = TRUE;
 	m_ping_warn.m_maxPingWarnings = 0;
@@ -302,7 +303,7 @@ void _stdcall xrServer::SendGameUpdateTo(IClient* client)
 	xrClientData* xr_client = static_cast<xrClientData*>(client);
 	VERIFY(xr_client);
 	xr_client->gamma_snapshot_ready = false;
-	if (!xr_client->net_Ready)
+	if (!xr_client->net_Ready || !xr_client->ps)
 	{
 		return;
 	}
@@ -455,7 +456,10 @@ u32 xrServer::OnDelayedMessage(NET_Packet& P, ClientID sender) // Non-Zero means
 			IClient* tmp_client = net_players.GetFoundClient(
 				ClientIdSearchPredicate(sender));
 			VERIFY(tmp_client);
-			OnCL_Connected(tmp_client);
+			xrClientData* joining_client = static_cast<xrClientData*>(tmp_client);
+			joining_client->net_ConnectionDataRequested = TRUE;
+			if (joining_client->ps && !joining_client->net_Accepted)
+				OnCL_Connected(joining_client);
 			//OnCL_Connected				(CL);
 		}
 		break;

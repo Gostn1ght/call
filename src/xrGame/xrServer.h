@@ -34,6 +34,7 @@ public:
 	CSE_Abstract* owner;
 	BOOL net_Ready;
 	BOOL net_Accepted;
+	BOOL net_ConnectionDataRequested;
 
 	bool gamma_snapshot_ready;
 	xr_deque<ActorInputCommand> m_pending_inputs;
