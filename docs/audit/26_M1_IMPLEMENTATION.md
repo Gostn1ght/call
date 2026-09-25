@@ -28,6 +28,8 @@ The DX11 package creates `dedicated/AnomalyGammaNetServerDX11.exe` and `bin/Anom
 
 The dedicated role uses `CTextConsole` with a visible server title, status counters and a live log. The status includes map, connections, ready Actors, port, uptime, FPS and pending M1 input count. The text window paints through the `WM_PAINT` device context, and the upper status area is large enough for the added lines. GAMMA's Lua vision hook is only used where ALife and Actor binders exist; a pure netcoop client falls back to native vision during remote AI updates.
 
+Out-of-process netcoop clients skip the digest challenge because the single-player host lacks a usable digest. That challenge formerly also caused the client to send `M_CREATE_PLAYER_STATE`. The client now sends profile data once after a successful remote connect result. The server records a connection-data request and waits for the profile event before exporting game state, spawn data and player updates. `M_UPDATE` is withheld while `xrClientData::ps` is null. This keeps the existing authenticated path for other game modes and prevents the short packet observed on the pure client.
+
 ## Diff classification against the commit before M1
 
 - **Required movement M1:** `Actor.cpp/.h`, `ActorInput.cpp`, `Actor_Movement.cpp`, `Actor_Network.cpp`, `actor_defs.h`, `Level_network.cpp`, `Level_network_messages.cpp`, `xrServer.cpp/.h`, `xrServer_CL_connect.cpp`, `xrServer_process_spawn.cpp`, and `xrMessages.h`. Dedicated startup also needs `ai_space.cpp`, `script_storage.cpp`, `x_ray.cpp`, `XR_IOConsole.cpp`, `UIWindow_script.cpp`, `Level.cpp`, `GameObject.cpp`, `PDA.cpp`, `ActorCondition.cpp` and `actor_communication.cpp` for gameplay state or to keep visual work out of the server.

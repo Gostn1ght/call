@@ -7,7 +7,7 @@ The user's source modpack is `C:\Users\Mahito\Desktop\Stalker_GAMMA-main\G.A.M.M
 ## Startup and lifecycle
 
 1. Boot the dedicated server and confirm it loads the map, Actor physics, network transport and Lua without renderer/UI failures. Confirm the visible status and log survive loading, focus changes and window overlap. Record memory and log errors.
-2. Connect clients A and B. Verify each receives a unique Actor ID and maps to the correct server `xrClientData::owner`.
+2. Connect clients A and B. Confirm each creates a player state before `OnCL_Connected` and receives a valid game state, then verify each receives a unique Actor ID and maps to the correct server `xrClientData::owner`.
 3. Disconnect A during movement and check its queued/current input is removed; reconnect A and confirm sequences and prediction history reset. Repeat after a location transition if available.
 
 ## Movement and prediction
