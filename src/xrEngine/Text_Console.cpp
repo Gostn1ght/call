@@ -12,6 +12,9 @@ CTextConsole::CTextConsole()
 	m_hConsoleWnd = NULL;
 	m_hLogWnd = NULL;
 	m_hLogWndFont = NULL;
+	m_hDC_LogWnd = NULL;
+	m_hDC_LogWnd_BackBuffer = NULL;
+	m_hBB_BM = NULL;
 
 	m_bScrollLog = true;
 	m_dwStartLine = 0;
@@ -112,9 +115,8 @@ void CTextConsole::CreateLogWnd()
 	R_ASSERT2(m_hLogWnd, "Unable to Create TextConsole Window!");
 	//---------------------------------------------------------------------------
 	ShowWindow(m_hLogWnd, SW_SHOW);
-	UpdateWindow(m_hLogWnd);
 	//-----------------------------------------------
-	LOGFONT lf;
+	LOGFONT lf = {};
 	lf.lfHeight = -12;
 	lf.lfWidth = 0;
 	lf.lfEscapement = 0;
@@ -154,6 +156,7 @@ void CTextConsole::CreateLogWnd()
 	SetBkColor(m_hDC_LogWnd_BackBuffer, RGB(1, 1, 1));
 	//------------------------------------------------
 	m_hBackGroundBrush = GetStockBrush(BLACK_BRUSH);
+	UpdateWindow(m_hLogWnd);
 }
 
 void CTextConsole::Initialize()
@@ -161,6 +164,7 @@ void CTextConsole::Initialize()
 	inherited::Initialize();
 
 	m_pMainWnd = &Device.m_hWnd;
+	SetWindowTextA(*m_pMainWnd, "Lost Zone / AnomalyMP Dedicated Server");
 	m_dwLastUpdateTime = Device.dwTimeGlobal;
 	m_last_time = Device.dwTimeGlobal;
 
@@ -181,12 +185,9 @@ void CTextConsole::Destroy()
 	SelectObject(m_hDC_LogWnd_BackBuffer, m_hOld_BM);
 
 	if (m_hBB_BM) DeleteObject(m_hBB_BM);
-	if (m_hOld_BM) DeleteObject(m_hOld_BM);
 	if (m_hLogWndFont) DeleteObject(m_hLogWndFont);
-	if (m_hPrevFont) DeleteObject(m_hPrevFont);
-	if (m_hBackGroundBrush) DeleteObject(m_hBackGroundBrush);
 
-	ReleaseDC(m_hLogWnd, m_hDC_LogWnd_BackBuffer);
+	DeleteDC(m_hDC_LogWnd_BackBuffer);
 	ReleaseDC(m_hLogWnd, m_hDC_LogWnd);
 
 	DestroyWindow(m_hLogWnd);
@@ -202,22 +203,17 @@ void CTextConsole::OnPaint()
 	RECT wRC;
 	PAINTSTRUCT ps;
 	BeginPaint(m_hLogWnd, &ps);
-
-	if (/*m_bNeedUpdate*/ Device.dwFrame % 2)
+	if (!m_hDC_LogWnd || !m_hDC_LogWnd_BackBuffer || !m_hBB_BM)
 	{
-		// m_dwLastUpdateTime = Device.dwTimeGlobal;
-		// m_bNeedUpdate = false;
-
-		GetClientRect(m_hLogWnd, &wRC);
-		DrawLog(m_hDC_LogWnd_BackBuffer, &wRC);
-	}
-	else
-	{
-		wRC = ps.rcPaint;
+		EndPaint(m_hLogWnd, &ps);
+		return;
 	}
 
+	GetClientRect(m_hLogWnd, &wRC);
+	DrawLog(m_hDC_LogWnd_BackBuffer, &wRC);
 
-	BitBlt(m_hDC_LogWnd,
+
+	BitBlt(ps.hdc,
 	       wRC.left, wRC.top,
 	       wRC.right - wRC.left, wRC.bottom - wRC.top,
 	       m_hDC_LogWnd_BackBuffer,
@@ -241,7 +237,7 @@ void CTextConsole::DrawLog(HDC hDC, RECT* pRect)
 	int Width = wRC.right - wRC.left;
 	int Height = wRC.bottom - wRC.top;
 	wRC = *pRect;
-	int y_top_max = (int)(0.32f * Height);
+	int y_top_max = (int)(0.42f * Height);
 
 	//---------------------------------------------------------------------------------
 	LPCSTR s_edt = ec().str_edit();
@@ -341,12 +337,10 @@ inherited::IR_OnKeyboardPress( dik );
 void CTextConsole::OnFrame()
 {
 	inherited::OnFrame();
-	/* if ( !m_bNeedUpdate && m_dwLastUpdateTime + 1000/g_svTextConsoleUpdateRate > Device.dwTimeGlobal )
-	 {
-	 return;
-	 }
-	 */
-	InvalidateRect(m_hConsoleWnd, NULL, FALSE);
-	SetCursor(LoadCursor(NULL, IDC_ARROW));
-	// m_bNeedUpdate = true;
+	// Paint the log and server counters without forcing a redraw every frame.
+	if (Device.dwTimeGlobal - m_dwLastUpdateTime >= 250)
+	{
+		m_dwLastUpdateTime = Device.dwTimeGlobal;
+		InvalidateRect(m_hLogWnd, NULL, FALSE);
+	}
 }

@@ -234,16 +234,7 @@ PROTECT_API void InitConsole()
 {
 	////SECUROM_MARKER_SECURITY_ON(5)
 
-#ifdef DEDICATED_SERVER
-    {
-        Console = xr_new<CTextConsole>();
-    }
-#else
-	// else
-	{
-		Console = xr_new<CConsole>();
-	}
-#endif
+	Console = g_dedicated_server ? static_cast<CConsole*>(xr_new<CTextConsole>()) : xr_new<CConsole>();
 	Console->Initialize();
 
 	xr_strcpy(Console->ConfigFile, "user.ltx");
@@ -1041,8 +1032,13 @@ int APIENTRY WinMain_impl(HINSTANCE hInstance,
     g_dedicated_server = true;
 #endif // DEDICATED_SERVER
 
-	//netanomaly: console-only server instance from the very same build
-	if (strstr(GetCommandLineA(), "-dedicated"))
+	// A packaged server EXE always enters dedicated mode, even without a flag.
+	string_path module_path = {};
+	GetModuleFileNameA(nullptr, module_path, sizeof(module_path));
+	LPCSTR module_name = strrchr(module_path, '\\');
+	module_name = module_name ? module_name + 1 : module_path;
+	if (!_stricmp(module_name, "AnomalyGammaNetServerDX11.exe") ||
+		strstr(GetCommandLineA(), "-dedicated"))
 	{
 		g_dedicated_server = true;
 	}

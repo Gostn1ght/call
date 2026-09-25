@@ -15,6 +15,7 @@
 #include "ai_space.h"
 #include "script_engine.h"
 #include "../xrEngine/IGame_Persistent.h"
+#include "../xrEngine/Stats.h"
 #include "string_table.h"
 #include "object_broker.h"
 
@@ -1295,11 +1296,40 @@ void xrServer::GetServerInfo(CServerInfo* si)
 {
 	string32 tmp;
 	string256 tmp256;
+	struct ConsoleClients
+	{
+		u32 connected = 0;
+		u32 ready_players = 0;
+		u32 queued_inputs = 0;
+		void operator()(IClient* client)
+		{
+			xrClientData* data = static_cast<xrClientData*>(client);
+			++connected;
+			if (data->net_Ready && smart_cast<CSE_ALifeCreatureActor*>(data->owner))
+				++ready_players;
+			queued_inputs += (u32)data->m_pending_inputs.size();
+		}
+	} clients;
+	ForEachClientDo(clients);
+
+	si->AddItem("Server name", Core.CompName, RGB(130, 160, 255));
+	shared_str level_name = g_pGameLevel ? Level().name() : shared_str();
+	si->AddItem("Map", level_name.size() ? level_name.c_str() : "loading", RGB(255, 100, 190));
+	xr_sprintf(tmp, sizeof(tmp), "%u / %u", clients.ready_players, gamma_net::player_limit(*connect_options));
+	si->AddItem("Players", tmp, RGB(210, 150, 255));
+	xr_sprintf(tmp, sizeof(tmp), "%u", clients.connected);
+	si->AddItem("Connections", tmp, RGB(150, 220, 255));
+	si->AddItem("Game version", "AnomalyMP M1", RGB(130, 220, 255));
+	si->AddItem("Access", strstr(*connect_options, "psw=") ? "Password" : "Open", RGB(240, 190, 170));
 
 	si->AddItem("Server port", itoa(GetPort(), tmp, 10), RGB(128, 128, 255));
 	LPCSTR time = InventoryUtilities::GetTimeAsString(Device.dwTimeGlobal, InventoryUtilities::etpTimeToSecondsAndDay).
 		c_str();
 	si->AddItem("Uptime", time, RGB(255, 228, 0));
+	xr_sprintf(tmp, sizeof(tmp), "%.1f", Device.Statistic->fFPS);
+	si->AddItem("FPS", tmp, RGB(210, 240, 255));
+	xr_sprintf(tmp, sizeof(tmp), "%u", clients.queued_inputs);
+	si->AddItem("M1 input queue", tmp, RGB(155, 235, 180));
 
 	//	xr_strcpy( tmp256, get_token_name(game_types, game->Type() ) );
 	xr_strcpy(tmp256, GameTypeToString(game->Type(), true));

@@ -142,6 +142,19 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /p:Configuration=${{matrix.buildconf}} ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Package DX11 dedicated and client executables
+      if: matrix.buildconf == 'DX11'
+      shell: pwsh
+      run: ./scripts/package-m1-dx11.ps1 -BuildBin ./_build/_game/bin_dbg -DestinationRoot ./_build/_game/m1-dx11-package
+
+    - name: Upload DX11 dedicated and client package
+      if: matrix.buildconf == 'DX11'
+      uses: actions/upload-artifact@v4.6.0
+      with:
+        name: DX11_dedicated_client
+        path: ./_build/_game/m1-dx11-package
+        if-no-files-found: error
+
     - name: Upload Exe
       uses: actions/upload-artifact@v4.6.0
       with:
