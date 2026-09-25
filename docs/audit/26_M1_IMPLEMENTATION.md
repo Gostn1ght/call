@@ -30,6 +30,8 @@ The dedicated role uses `CTextConsole` with a visible server title, status count
 
 Out-of-process netcoop clients skip the digest challenge because the single-player host lacks a usable digest. That challenge formerly also caused the client to send `M_CREATE_PLAYER_STATE`. The client now sends profile data once after a successful remote connect result. The server records a connection-data request and waits for the profile event before exporting game state, spawn data and player updates. `M_UPDATE` is withheld while `xrClientData::ps` is null. This keeps the existing authenticated path for other game modes and prevents the short packet observed on the pure client.
 
+After the connection fix, the remote client reached Actor update but GAMMA's Discord Rich Presence helper queried `alife()` for the story-mode flag. A pure netcoop client has no ALife service. Actor update now runs that single-player Rich Presence block only when ALife exists; the dedicated server owns the corresponding gameplay state.
+
 ## Diff classification against the commit before M1
 
 - **Required movement M1:** `Actor.cpp/.h`, `ActorInput.cpp`, `Actor_Movement.cpp`, `Actor_Network.cpp`, `actor_defs.h`, `Level_network.cpp`, `Level_network_messages.cpp`, `xrServer.cpp/.h`, `xrServer_CL_connect.cpp`, `xrServer_process_spawn.cpp`, and `xrMessages.h`. Dedicated startup also needs `ai_space.cpp`, `script_storage.cpp`, `x_ray.cpp`, `XR_IOConsole.cpp`, `UIWindow_script.cpp`, `Level.cpp`, `GameObject.cpp`, `PDA.cpp`, `ActorCondition.cpp` and `actor_communication.cpp` for gameplay state or to keep visual work out of the server.

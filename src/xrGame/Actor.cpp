@@ -1415,8 +1415,9 @@ void CActor::UpdateCL()
 	if (psActorFlags.test(AF_MULTI_ITEM_PICKUP))
 		m_bPickupMode = false;
 
-	//Discord
-	if (psDeviceFlags2.test(rsDiscord))
+	// GAMMA's rich-presence mode helpers query ALife, which a pure netcoop client does not own.
+	// The dedicated server owns ALife; the remote client must not call those single-player helpers.
+	if (psDeviceFlags2.test(rsDiscord) && ai().get_alife())
 	{
 		//God
 		bool isGodmode = psActorFlags.test(AF_GODMODE);
