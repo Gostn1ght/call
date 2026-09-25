@@ -122,6 +122,14 @@ void CActor::TryToTalk()
 
 void CActor::RunTalkDialog(CInventoryOwner* talk_partner, bool disable_break)
 {
+	// A remote netcoop client has neither ALife trader entities nor a local server.
+	// Until dialogue state is replicated, do not enter the single-player talk UI.
+	if (!ai().get_alife() && !Level().Server)
+	{
+		Msg("[NetAnomaly] NPC dialogue requires replicated trader state");
+		return;
+	}
+
 	//предложить поговорить с нами
 	if (talk_partner->OfferTalk(this))
 	{

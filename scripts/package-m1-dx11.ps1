@@ -20,8 +20,14 @@ Copy-Item -LiteralPath $sourceExe -Destination (Join-Path $clientBin 'AnomalyGam
 foreach ($dependencySource in @($BuildBin, $DependencyBin)) {
     if (-not $dependencySource) { continue }
     Get-ChildItem -LiteralPath $dependencySource -Filter '*.dll' -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $serverBin -Force
-        Copy-Item -LiteralPath $_.FullName -Destination $clientBin -Force
+        $serverDll = Join-Path $serverBin $_.Name
+        $clientDll = Join-Path $clientBin $_.Name
+        if (-not [string]::Equals($_.FullName, $serverDll, [StringComparison]::OrdinalIgnoreCase)) {
+            Copy-Item -LiteralPath $_.FullName -Destination $serverDll -Force
+        }
+        if (-not [string]::Equals($_.FullName, $clientDll, [StringComparison]::OrdinalIgnoreCase)) {
+            Copy-Item -LiteralPath $_.FullName -Destination $clientDll -Force
+        }
     }
 }
 

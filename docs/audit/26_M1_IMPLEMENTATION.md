@@ -32,6 +32,8 @@ Out-of-process netcoop clients skip the digest challenge because the single-play
 
 After the connection fix, the remote client reached Actor update but GAMMA's Discord Rich Presence helper queried `alife()` for the story-mode flag. A pure netcoop client has no ALife service. Actor update now runs that single-player Rich Presence block only when ALife exists; the dedicated server owns the corresponding gameplay state.
 
+Keyboard interaction with an NPC exposed a separate single-player UI dependency: `CUICharacterInfo::ch_info_get_from_id` expects `Level().Server`, which a remote client does not have. The remote client now stops before the dialogue UI and logs that replicated trader state is required. This avoids the null dereference while explicitly leaving remote NPC dialogue outside M1.
+
 ## Diff classification against the commit before M1
 
 - **Required movement M1:** `Actor.cpp/.h`, `ActorInput.cpp`, `Actor_Movement.cpp`, `Actor_Network.cpp`, `actor_defs.h`, `Level_network.cpp`, `Level_network_messages.cpp`, `xrServer.cpp/.h`, `xrServer_CL_connect.cpp`, `xrServer_process_spawn.cpp`, and `xrMessages.h`. Dedicated startup also needs `ai_space.cpp`, `script_storage.cpp`, `x_ray.cpp`, `XR_IOConsole.cpp`, `UIWindow_script.cpp`, `Level.cpp`, `GameObject.cpp`, `PDA.cpp`, `ActorCondition.cpp` and `actor_communication.cpp` for gameplay state or to keep visual work out of the server.
