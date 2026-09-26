@@ -157,25 +157,15 @@ void player_legs_controller::copy_bones_from_actor(CActor* actor, bool isShadowP
     root_bi.mRenderTransform.mul_43(root_bi.mTransform,
         m_model->LL_GetData(legs_root).m2b_transform);
 
-    u16 bone_count = m_model->LL_BoneCount();
-    if (bone_count == actor_K->LL_BoneCount())
+    // Skeletons with the same bone count can still assign different numeric IDs.
+    // Match by bone name so an outfit cannot put an arm transform on a leg.
+    for (auto& [bonename, ID] : *m_model->LL_Bones())
     {
-        for (u16 i = 0; i < bone_count; ++i)
+        auto BoneID = actor_K->LL_BoneID(bonename);
+        if (BoneID != BI_NONE)
         {
-            m_model->LL_GetTransform(i).set(actor_K->LL_GetTransform(i));
-            m_model->LL_GetTransform_R(i).set(actor_K->LL_GetTransform_R(i));
-        }
-    }
-    else
-    {
-        for (auto& [bonename, ID] : *m_model->LL_Bones())
-        {
-            auto BoneID = actor_K->LL_BoneID(bonename);
-            if (BoneID != BI_NONE)
-            {
-                m_model->LL_GetTransform(ID).set(actor_K->LL_GetTransform(BoneID));
-                m_model->LL_GetTransform_R(ID).set(actor_K->LL_GetTransform_R(BoneID));
-            }
+            m_model->LL_GetTransform(ID).set(actor_K->LL_GetTransform(BoneID));
+            m_model->LL_GetTransform_R(ID).set(actor_K->LL_GetTransform_R(BoneID));
         }
     }
 

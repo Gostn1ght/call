@@ -45,3 +45,5 @@ The matching `f2858aaca` DX11 GitHub job in run [`36178834391`](https://github.c
 `934b4c667` removes the single-player bandwidth limiter for `-netcoop`, guards the missing remote CSE trader lookup in the inventory UI, and refreshes the dedicated status/log window synchronously. The local `xrGame:ClCompile` DX11 solution target passed with these changes. The full GitHub DX11 job and two-process runtime retest are still pending at this entry.
 
 The GAMMA PDA script checks for an equipped device in slot 8. A new remote co-op actor had no starter loadout, so `game_sv_Single::netcoop_spawn_actor` now creates a basic `device_pda_1` owned by that actor when the section exists. GAMMA's config places the PDA in the rucksack by default; the player must equip it. This is a temporary starter loadout until persistent characters own inventory state.
+
+The first-person legs controller previously assumed equal bone counts meant equal bone indices. GAMMA outfit skeletons can have different index orders. It now copies transforms by bone name for every outfit. This compiled locally; a visual runtime check is still required.
