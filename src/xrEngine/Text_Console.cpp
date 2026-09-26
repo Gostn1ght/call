@@ -348,6 +348,26 @@ void CTextConsole::OnFrame()
 
 void CTextConsole::RefreshDisplay()
 {
-	if (m_hLogWnd)
-		RedrawWindow(m_hLogWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
+	if (!m_hLogWnd || !m_pMainWnd)
+		return;
+
+	RECT parent_rect, child_rect;
+	GetClientRect(*m_pMainWnd, &parent_rect);
+	GetClientRect(m_hLogWnd, &child_rect);
+	const int width = parent_rect.right - parent_rect.left;
+	const int height = parent_rect.bottom - parent_rect.top;
+	if (width > 0 && height > 0 &&
+		(width != child_rect.right - child_rect.left || height != child_rect.bottom - child_rect.top))
+	{
+		HBITMAP new_bitmap = CreateCompatibleBitmap(m_hDC_LogWnd, width, height);
+		if (new_bitmap)
+		{
+			HBITMAP old_bitmap = (HBITMAP)SelectObject(m_hDC_LogWnd_BackBuffer, new_bitmap);
+			DeleteObject(old_bitmap);
+			m_hBB_BM = new_bitmap;
+			MoveWindow(m_hConsoleWnd, 0, 0, width, height, FALSE);
+			MoveWindow(m_hLogWnd, 0, 0, width, height, FALSE);
+		}
+	}
+	RedrawWindow(m_hLogWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
 }

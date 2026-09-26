@@ -83,6 +83,9 @@ xrServer::EConnect xrServer::Connect(shared_str& session_name, GameDescriptionDa
 	xr_strcpy(game_descr.map_version, game_sv_GameState::parse_level_version(session_name.c_str()).c_str());
 	xr_strcpy(game_descr.download_url, get_map_download_url(game_descr.map_name, game_descr.map_version));
 
+	// ALife rewrites session_name to a short world descriptor and drops
+	// transport options such as maxplayers. Keep the original for netcoop.
+	shared_str const transport_options = session_name;
 	game->Create(session_name);
 
 	//netcoop: for the single gametype the real level name is only known after
@@ -96,7 +99,7 @@ xrServer::EConnect xrServer::Connect(shared_str& session_name, GameDescriptionDa
 			xr_strcpy(game_descr.map_name, netcoop_level_name.c_str());
 	}
 
-	return IPureServer::Connect(*session_name, game_descr);
+	return IPureServer::Connect(strstr(Core.Params, "-netcoop") ? *transport_options : *session_name, game_descr);
 }
 
 

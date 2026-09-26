@@ -7,6 +7,8 @@
 #include "dedicated_server_only.h"
 #include "../xrcdb/xrxrc.h"
 
+extern ENGINE_API bool g_dedicated_server;
+
 //#include "securom_api.h"
 
 extern XRCDB_API BOOL* cdb_bDebug;
@@ -192,6 +194,10 @@ PROTECT_API void CRenderDevice::Create()
 	{
 		style = WS_POPUP;
 	}
+	// The dedicated text console is a child window. The swap-chain host must
+	// clip its client area or DXGI paints black over the log and status panel.
+	if (g_dedicated_server)
+		style |= WS_CLIPCHILDREN;
 
 	SetWindowLongPtr(m_hWnd, GWL_STYLE, style);
 	SetWindowPos(m_hWnd, HWND_TOP, monX, monY, w, h, SWP_FRAMECHANGED);
