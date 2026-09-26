@@ -454,6 +454,18 @@ void game_sv_Single::netcoop_spawn_actor(ClientID id_who)
 	if (CL->ps && CL->owner)
 		CL->ps->SetGameID(CL->owner->ID);
 
+	// GAMMA's PDA script requires an owned device. Additional netcoop actors
+	// bypass the single-player starter loadout, so give them a basic PDA here.
+	// Its config defaults to the rucksack; the player can equip it in slot 8.
+	if (CL->owner && pSettings->section_exist("device_pda_1"))
+	{
+		CSE_Abstract* pda = spawn_begin("device_pda_1");
+		pda->ID_Parent = CL->owner->ID;
+		pda->s_flags.assign(M_SPAWN_OBJECT_LOCAL);
+		spawn_end(pda, id_who);
+		Msg("[NetAnomaly] starter PDA spawned for actor %u", CL->owner->ID);
+	}
+
 	Msg("[NetAnomaly] co-op actor '%s' spawned for client 0x%08x eid %u at (%3.2f, %3.2f, %3.2f)",
 		nick, id_who.value(), CL->owner ? CL->owner->ID : u16(0xffff),
 		pos.x, pos.y, pos.z);
