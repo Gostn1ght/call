@@ -7,6 +7,7 @@
 #include "game_level_cross_table.h"
 #include "level_graph.h"
 #include "client_spawn_manager.h"
+#include "GameObject.h"
 #include "../xrEngine/xr_object.h"
 #include "../xrEngine/IGame_Persistent.h"
 
@@ -156,6 +157,15 @@ void CLevel::g_sv_Spawn(CSE_Abstract* E)
 				}
 				SetControlEntity(O);
 				SetEntity(O); //do not switch !!!
+				if (strstr(Core.Params, "-netcoop") && !g_dedicated_server && !ai().get_alife())
+				{
+					// The full GAMMA Actor binder needs local ALife. Expose only the
+					// locally controlled Actor to client UI after ownership is known.
+					CGameObject* actor_object = smart_cast<CGameObject*>(O);
+					::luabind::functor<void> bind_ui_actor;
+					if (actor_object && ai().script_engine().functor("_G.NetCoopClientActorSpawned", bind_ui_actor))
+						bind_ui_actor(actor_object->lua_game_object());
+				}
 			}
 		}
 
