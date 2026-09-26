@@ -1305,6 +1305,10 @@ void xrServer::GetServerInfo(CServerInfo* si)
 		u32 connected = 0;
 		u32 ready_players = 0;
 		u32 queued_inputs = 0;
+		u32 last_received = 0;
+		u32 last_processed = 0;
+		u32 input_age_ms = 0;
+		bool has_remote_actor = false;
 		void operator()(IClient* client)
 		{
 			xrClientData* data = static_cast<xrClientData*>(client);
@@ -1312,6 +1316,13 @@ void xrServer::GetServerInfo(CServerInfo* si)
 			if (data->net_Ready && smart_cast<CSE_ALifeCreatureActor*>(data->owner))
 				++ready_players;
 			queued_inputs += (u32)data->m_pending_inputs.size();
+			if (!has_remote_actor && !data->flags.bLocal && smart_cast<CSE_ALifeCreatureActor*>(data->owner))
+			{
+				has_remote_actor = true;
+				last_received = data->m_last_received_sequence;
+				last_processed = data->m_last_processed_sequence;
+				input_age_ms = Device.dwTimeGlobal - data->m_last_input_receive_time;
+			}
 		}
 	} clients;
 	ForEachClientDo(clients);
@@ -1334,6 +1345,13 @@ void xrServer::GetServerInfo(CServerInfo* si)
 	si->AddItem("FPS", tmp, RGB(210, 240, 255));
 	xr_sprintf(tmp, sizeof(tmp), "%u", clients.queued_inputs);
 	si->AddItem("M1 input queue", tmp, RGB(155, 235, 180));
+	if (clients.has_remote_actor)
+	{
+		xr_sprintf(tmp256, sizeof(tmp256), "received %u / processed %u", clients.last_received, clients.last_processed);
+		si->AddItem("M1 input sequence", tmp256, RGB(155, 235, 180));
+		xr_sprintf(tmp, sizeof(tmp), "%u ms", clients.input_age_ms);
+		si->AddItem("M1 input age", tmp, clients.input_age_ms > 500 ? RGB(255, 120, 120) : RGB(155, 235, 180));
+	}
 
 	//	xr_strcpy( tmp256, get_token_name(game_types, game->Type() ) );
 	xr_strcpy(tmp256, GameTypeToString(game->Type(), true));

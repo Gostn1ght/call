@@ -34,6 +34,8 @@ After the connection fix, the remote client reached Actor update but GAMMA's Dis
 
 Keyboard interaction with an NPC exposed a separate single-player UI dependency: `CUICharacterInfo::ch_info_get_from_id` expects `Level().Server`, which a remote client does not have. The remote client now stops before the dialogue UI and logs that replicated trader state is required. This avoids the null dereference while explicitly leaving remote NPC dialogue outside M1.
 
+The same missing server lookup also appears when a remote client opens the Actor menu. `CUICharacterInfo` now checks whether the local server and game exist, and `InitCharacter` uses the live object's name as a limited fallback when no CSE trader entity is available. Rank, community, reputation and biography are not fabricated; these require later character-state replication.
+
 ## Diff classification against the commit before M1
 
 - **Required movement M1:** `Actor.cpp/.h`, `ActorInput.cpp`, `Actor_Movement.cpp`, `Actor_Network.cpp`, `actor_defs.h`, `Level_network.cpp`, `Level_network_messages.cpp`, `xrServer.cpp/.h`, `xrServer_CL_connect.cpp`, `xrServer_process_spawn.cpp`, and `xrMessages.h`. Dedicated startup also needs `ai_space.cpp`, `script_storage.cpp`, `x_ray.cpp`, `XR_IOConsole.cpp`, `UIWindow_script.cpp`, `Level.cpp`, `GameObject.cpp`, `PDA.cpp`, `ActorCondition.cpp` and `actor_communication.cpp` for gameplay state or to keep visual work out of the server.

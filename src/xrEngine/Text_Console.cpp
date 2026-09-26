@@ -56,7 +56,7 @@ void CTextConsole::CreateConsoleWnd()
 	RegisterClass(&wndClass);
 
 	// Set the window's initial style
-	u32 dwWindowStyle = WS_OVERLAPPED | WS_CHILD | WS_VISIBLE; // | WS_CLIPSIBLINGS;// | WS_CLIPCHILDREN;
+	u32 dwWindowStyle = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN;
 
 	// Set the window's initial width
 	RECT rc;
@@ -98,7 +98,7 @@ void CTextConsole::CreateLogWnd()
 	RegisterClass(&wndClass);
 
 	// Set the window's initial style
-	u32 dwWindowStyle = WS_OVERLAPPED | WS_CHILD | WS_VISIBLE; // | WS_CLIPSIBLINGS;
+	u32 dwWindowStyle = WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS;
 	// u32 dwWindowStyleEx = WS_EX_CLIENTEDGE;
 
 	// Set the window's initial width
@@ -175,6 +175,7 @@ void CTextConsole::Initialize()
 	UpdateWindow(m_hConsoleWnd);
 
 	m_server_info.ResetData();
+	RefreshDisplay();
 }
 
 void CTextConsole::Destroy()
@@ -337,10 +338,16 @@ inherited::IR_OnKeyboardPress( dik );
 void CTextConsole::OnFrame()
 {
 	inherited::OnFrame();
-	// Paint the log and server counters without forcing a redraw every frame.
+	// The dedicated server has no renderer-driven present loop for this window.
 	if (Device.dwTimeGlobal - m_dwLastUpdateTime >= 250)
 	{
 		m_dwLastUpdateTime = Device.dwTimeGlobal;
-		InvalidateRect(m_hLogWnd, NULL, FALSE);
+		RefreshDisplay();
 	}
+}
+
+void CTextConsole::RefreshDisplay()
+{
+	if (m_hLogWnd)
+		RedrawWindow(m_hLogWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
 }

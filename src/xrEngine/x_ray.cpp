@@ -1593,7 +1593,11 @@ PROTECT_API void CApplication::LoadDraw()
 
 	// A dedicated server has no loading UI shader to draw. Keep its frame
 	// counter advancing, but leave the loading screen to graphical clients.
-	if (g_dedicated_server) return;
+	if (g_dedicated_server)
+	{
+		static_cast<CTextConsole*>(Console)->RefreshDisplay();
+		return;
+	}
 
 	if (!Device.Begin()) return;
 

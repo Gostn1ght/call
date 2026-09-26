@@ -49,6 +49,7 @@ public:
 
 	void AddString(LPCSTR string);
 	void OnPaint();
+	void RefreshDisplay();
 }; // class TextConsole
 
 //extern ENGINE_API CTextConsole* TextConsole;

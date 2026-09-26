@@ -2411,20 +2411,10 @@ void CActor::renderable_Render()
 		{
             if (validRendererForShadow)
             {
-                static u32 renderFrame = 0;
-                bool needAdjust = false;
-                if (Device.dwFrame != renderFrame)
-                {
-                    renderFrame = Device.dwFrame;
-                    needAdjust = true;
-                }
-
                 if (canRenderLegs(this, m_holder))
                 {
                     Fvector diff(XFORMShadow.c);
                     diff.sub(XFORM().c);
-                    float m = diff.magnitude();
-                    diff.normalize_safe();
 
                     // Render full body from legs controller without hiding bones for shadow correctness
                     // Solves potential issues with manipulating actor's XFORM
@@ -2437,9 +2427,10 @@ void CActor::renderable_Render()
                     if (pItem)
                     {
                         auto& v = pItem->object();
-                        if (needAdjust)
-                            v.XFORM().c.mad(diff, m);
+                        const Fvector original = v.XFORM().c;
+                        v.XFORM().c.add(diff);
                         v.renderable_Render();
+                        v.XFORM().c.set(original);
                     }
 
                     // Move torch
@@ -2448,21 +2439,10 @@ void CActor::renderable_Render()
                         for (const auto& I : m_attached_objects)
                         {
                             auto& v = I->object();
-                            if (needAdjust)
-                                v.XFORM().c.mad(diff, m);
+                            const Fvector original = v.XFORM().c;
+                            v.XFORM().c.add(diff);
                             v.renderable_Render();
-                        }
-                    }
-
-                    // Move bolt
-                    if (inventory().GetActiveSlot() == BOLT_SLOT)
-                    {
-                        auto bI = inventory().ItemFromSlot(BOLT_SLOT);
-                        if (bI)
-                        {
-                            auto& v = bI->object();
-                            if (needAdjust)
-                                v.XFORM().c.mad(diff, m);
+                            v.XFORM().c.set(original);
                         }
                     }
                 }

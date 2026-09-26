@@ -31,7 +31,7 @@ bool player_legs_controller::resolve_config(CActor* actor, shared_str& sect, sha
         ? outfit->object().cNameSect()
         : shared_str("actor");
 
-    if (m_last_outfit_sect == current_outfit)
+    if (m_last_outfit_sect == current_outfit && m_last_model.size())
     {
         sect = m_last_outfit_sect;
         model = m_last_model;
@@ -64,16 +64,16 @@ bool player_legs_controller::resolve_config(CActor* actor, shared_str& sect, sha
     // default
     if (pSettings->line_exist("actor", "legs_visual"))
     {
-        sect = m_last_outfit_sect;
-        m_last_model = pSettings->r_string(m_last_outfit_sect, "legs_visual");
+        sect = "actor";
+        m_last_model = pSettings->r_string("actor", "legs_visual");
         model = m_last_model;
         return true;
     }
 
-    if (pSettings->line_exist(m_last_outfit_sect, "visual"))
+    if (pSettings->line_exist("actor", "visual"))
     {
-        sect = m_last_outfit_sect;
-        m_last_model = pSettings->r_string(m_last_outfit_sect, "visual");
+        sect = "actor";
+        m_last_model = pSettings->r_string("actor", "visual");
         model = m_last_model;
         return true;
     }

@@ -32,7 +32,9 @@ CSE_ALifeTraderAbstract* ch_info_get_from_id(u16 id)
 	}
 	else
 	{
-		return smart_cast<CSE_ALifeTraderAbstract*>(Level().Server->game->get_entity_from_eid(id));
+		return Level().Server && Level().Server->game
+			? smart_cast<CSE_ALifeTraderAbstract*>(Level().Server->game->get_entity_from_eid(id))
+			: nullptr;
 	}
 }
 
@@ -153,6 +155,20 @@ void CUICharacterInfo::InitCharacter(u16 id)
 	m_ownerID = id;
 
 	CSE_ALifeTraderAbstract* T = ch_info_get_from_id(m_ownerID);
+	if (!T)
+	{
+		// Remote netcoop clients have live objects but no local CSE/ALife trader registry.
+		// Show the available object name without inventing rank, faction or reputation.
+		ClearInfo();
+		m_ownerID = u16(-1);
+		CObject* object = Level().Objects.net_Find(id);
+		if (object && m_icons[eName])
+		{
+			m_icons[eName]->TextItemControl()->SetTextST(object->cName().c_str());
+			m_icons[eName]->Show(true);
+		}
+		return;
+	}
 
 	CCharacterInfo chInfo;
 	chInfo.Init(T);
