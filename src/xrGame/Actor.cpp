@@ -2382,9 +2382,6 @@ void CActor::renderable_Render()
 {
 	VERIFY(_valid(XFORM()));
 
-    // leg shadows are disabled for DX8 and DX9
-    bool validRendererForShadow = (::Render->get_generation() == ::Render->GENERATION_R2) && (::Render->get_dx_level() != 0x00090000);
-
 	if (cam_active == eacFirstEye && this == Level().CurrentViewEntity())
 	{
 		if (::Render->active_phase() == 0) // can render first person body here
@@ -2409,54 +2406,11 @@ void CActor::renderable_Render()
 		}
 		else if (AllowActorShadow()) // render actor shadow
 		{
-            if (validRendererForShadow)
-            {
-                if (canRenderLegs(this, m_holder))
-                {
-                    Fvector diff(XFORMShadow.c);
-                    diff.sub(XFORM().c);
-
-                    // Render full body from legs controller without hiding bones for shadow correctness
-                    // Solves potential issues with manipulating actor's XFORM
-                        m_legs_controller.update(this, true);
-                        m_legs_controller.render();
-
-                        // Ideally the active item also should be duplicated but leave this for now
-                        // Move active item
-                        PIItem pItem = inventory().ActiveItem();
-                    if (pItem)
-                    {
-                        auto& v = pItem->object();
-                        const Fvector original = v.XFORM().c;
-                        v.XFORM().c.add(diff);
-                        v.renderable_Render();
-                        v.XFORM().c.set(original);
-                    }
-
-                    // Move torch
-                    if (legs_render_attachments_shadow)
-                    {
-                        for (const auto& I : m_attached_objects)
-                        {
-                            auto& v = I->object();
-                            const Fvector original = v.XFORM().c;
-                            v.XFORM().c.add(diff);
-                            v.renderable_Render();
-                            v.XFORM().c.set(original);
-                        }
-                    }
-                }
-                else
-                {
-                    inherited::renderable_Render();
-                    CInventoryOwner::renderable_Render();
-                }
-            }
-            else
-            {
-                inherited::renderable_Render();
-                CInventoryOwner::renderable_Render();
-            }
+			// The camera-following legs model is only for the first-person view.
+			// Its offset and hidden upper-body bones produced a distorted shadow.
+			// Cast the shadow from the authoritative full actor skeleton at XFORM.
+			inherited::renderable_Render();
+			CInventoryOwner::renderable_Render();
 		}
 	}
 

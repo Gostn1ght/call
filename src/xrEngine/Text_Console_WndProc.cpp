@@ -5,6 +5,12 @@ LRESULT CALLBACK TextConsole_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 {
 	switch (uMsg)
 	{
+	case WM_LBUTTONDOWN:
+		SetFocus(GetAncestor(hWnd, GA_ROOT));
+		return 0;
+	case WM_SETCURSOR:
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		return TRUE;
 	case WM_PAINT:
 		{
 			// return 0;
@@ -38,6 +44,16 @@ LRESULT CALLBACK TextConsole_LogWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 {
 	switch (uMsg)
 	{
+	case WM_TIMER:
+		if (Console)
+			static_cast<CTextConsole*>(Console)->RefreshDisplay();
+		return 0;
+	case WM_LBUTTONDOWN:
+		SetFocus(GetAncestor(hWnd, GA_ROOT));
+		return 0;
+	case WM_SETCURSOR:
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		return TRUE;
 	case WM_ERASEBKGND:
 		return (LRESULT)1; // Say we handled it.
 

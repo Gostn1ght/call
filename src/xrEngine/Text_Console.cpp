@@ -173,6 +173,7 @@ void CTextConsole::Initialize()
 
 	ShowWindow(m_hConsoleWnd, SW_SHOW);
 	UpdateWindow(m_hConsoleWnd);
+	SetTimer(m_hLogWnd, 1, 250, nullptr);
 
 	m_server_info.ResetData();
 	RefreshDisplay();
@@ -180,6 +181,8 @@ void CTextConsole::Initialize()
 
 void CTextConsole::Destroy()
 {
+	if (m_hLogWnd)
+		KillTimer(m_hLogWnd, 1);
 	inherited::Destroy();
 
 	SelectObject(m_hDC_LogWnd_BackBuffer, m_hPrevFont);
@@ -264,6 +267,12 @@ void CTextConsole::DrawLog(HDC hDC, RECT* pRect)
 
 	SetTextColor(hDC, RGB(255, 255, 255));
 	TextOut(hDC, 0, Height - tm.tmHeight - 3, ioc_prompt, xr_strlen(ioc_prompt)); // ">>> "
+	SYSTEMTIME wall_time;
+	GetLocalTime(&wall_time);
+	string32 clock_text;
+	xr_sprintf(clock_text, "%02u:%02u:%02u", wall_time.wHour, wall_time.wMinute, wall_time.wSecond);
+	SetTextColor(hDC, RGB(100, 220, 220));
+	TextOut(hDC, Width - 80, Height - tm.tmHeight - 3, clock_text, xr_strlen(clock_text));
 
 	SetTextColor(hDC, (COLORREF)bgr2rgb(get_mark_color(mark11)));
 	TextOut(hDC, xb, Height - tm.tmHeight - 3, s_edt, xr_strlen(s_edt));
@@ -306,9 +315,10 @@ void CTextConsole::DrawLog(HDC hDC, RECT* pRect)
 		}
 	}
 
-	if (g_pGameLevel && (Device.dwTimeGlobal - m_last_time > 500))
+	const u32 now = GetTickCount();
+	if (g_pGameLevel && (now - m_last_time > 500))
 	{
-		m_last_time = Device.dwTimeGlobal;
+		m_last_time = now;
 
 		m_server_info.ResetData();
 		g_pGameLevel->GetLevelInfo(&m_server_info);

@@ -835,6 +835,30 @@ void CRenderDevice::OnWM_Activate(WPARAM wParam, LPARAM lParam)
 	BOOL fMinimized = (BOOL)HIWORD(wParam);
 	BOOL bActive = ((fActive != WA_INACTIVE) && (!fMinimized)) ? TRUE : FALSE;
 
+	// The dedicated window is a text console. Never apply the game cursor
+	// capture or hide rules to it, even in the regular (non-DEDICATED_SERVER)
+	// build used by the separate server executable.
+	if (g_dedicated_server)
+	{
+		if (bActive != Device.b_is_Active)
+		{
+			Device.b_is_Active = bActive;
+			if (bActive)
+			{
+				Device.seqAppActivate.Process(rp_AppActivate);
+				app_inactive_time += TimerMM.GetElapsed_ms() - app_inactive_time_start;
+			}
+			else
+			{
+				app_inactive_time_start = TimerMM.GetElapsed_ms();
+				Device.seqAppDeactivate.Process(rp_AppDeactivate);
+			}
+		}
+		ClipCursor(nullptr);
+		ShowCursor(TRUE);
+		return;
+	}
+
 	if (psDeviceFlags2.test(rsAlwaysActive) && g_screenmode != 2)
 	{
 		Device.b_is_Active = TRUE;
