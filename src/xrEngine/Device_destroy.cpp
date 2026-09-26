@@ -101,7 +101,7 @@ void CRenderDevice::Reset(bool precache)
 		seqResolutionChanged.Process(rp_ScreenResolutionChanged);
 	}
 
-	if (g_screenmode == 1)
+	if (!g_dedicated_server && g_screenmode == 1)
 	{
 		u32 w, h;
 		int monX, monY;
@@ -112,6 +112,8 @@ void CRenderDevice::Reset(bool precache)
 	}
 
 #ifndef DEDICATED_SERVER
+	if (!g_dedicated_server)
+	{
 	ShowCursor(FALSE);
 	RECT winRect;
 	GetClientRect(m_hWnd, &winRect);
@@ -119,6 +121,7 @@ void CRenderDevice::Reset(bool precache)
 	clientHeight = winRect.bottom;
 	MapWindowPoints(m_hWnd, nullptr, reinterpret_cast<LPPOINT>(&winRect), 2);
 	ClipCursor(&winRect);
+	}
 #endif
 
 	m_imgui.OnDeviceResetEnd();
@@ -168,7 +171,8 @@ bool CRenderDevice::ChangeOutputMonitor(HMONITOR hTargetMon)
 	if (!switched)
 	{
 		m_imgui.OnDeviceResetEnd();
-		ShowCursor(FALSE);
+		if (!g_dedicated_server)
+			ShowCursor(FALSE);
 		use_reshade = init_reshade();
 		return false;
 	}
@@ -187,6 +191,8 @@ bool CRenderDevice::ChangeOutputMonitor(HMONITOR hTargetMon)
 		seqResolutionChanged.Process(rp_ScreenResolutionChanged);
 
 #ifndef DEDICATED_SERVER
+	if (!g_dedicated_server)
+	{
 	ShowCursor(FALSE);
 	RECT winRect;
 	GetClientRect(m_hWnd, &winRect);
@@ -194,6 +200,7 @@ bool CRenderDevice::ChangeOutputMonitor(HMONITOR hTargetMon)
 	clientHeight = winRect.bottom;
 	MapWindowPoints(m_hWnd, nullptr, reinterpret_cast<LPPOINT>(&winRect), 2);
 	ClipCursor(&winRect);
+	}
 #endif
 
 	m_imgui.OnDeviceResetEnd();

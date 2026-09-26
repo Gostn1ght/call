@@ -241,7 +241,10 @@ PROTECT_API void CRenderDevice::Create()
 	clientWidth = winRect.right;
 	clientHeight = winRect.bottom;
 	MapWindowPoints(m_hWnd, nullptr, reinterpret_cast<LPPOINT>(&winRect), 2);
-	ClipCursor(&winRect);
+	if (g_dedicated_server)
+		ClipCursor(nullptr);
+	else
+		ClipCursor(&winRect);
 	SetActiveWindow(m_hWnd);
 
 	string_path fname;

@@ -8,6 +8,7 @@
 #include "level_graph.h"
 #include "client_spawn_manager.h"
 #include "GameObject.h"
+#include "script_game_object.h"
 #include "../xrEngine/xr_object.h"
 #include "../xrEngine/IGame_Persistent.h"
 
